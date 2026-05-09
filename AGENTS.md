@@ -1,0 +1,88 @@
+# Cleaner - 垃圾清理工具
+
+跨平台 TUI 垃圾清理工具，支持 Windows/Linux/macOS。
+
+## 项目结构
+
+```
+src/
+├── main.rs      # 入口 + TUI 事件循环
+├── app.rs       # 应用状态机
+├── ui.rs        # ratatui 界面渲染
+├── scanner.rs   # 文件扫描 + 安全检查
+├── disk.rs      # 磁盘空间检测
+└── error.rs     # 错误类型枚举
+```
+
+## 核心模块
+
+### app.rs - 状态管理
+- `AppState`: Scanning → Selecting → Confirming → Cleaning → Complete
+- 管理文件列表、选择状态、清理进度
+
+### scanner.rs - 文件扫描
+- `scan_trash_dirs()`: 扫描各包管理器缓存目录
+- `is_system_critical()`: 安全检查，禁止删除系统目录
+- `TrashItem`: 文件条目（路径、大小、选中状态）
+
+### disk.rs - 磁盘信息
+- `get_disk_info()`: 获取指定路径的磁盘可用空间
+- 使用 sysinfo 库跨平台获取
+
+### error.rs - 错误处理
+- `CleanError`: 枚举类型
+  - `SystemPathForbidden`: 系统路径禁止删除
+  - `NoFilesSelected`: 未选择文件
+  - `FileNotFound`: 文件不存在
+  - `PermissionDenied`: 权限不足
+
+## 安全机制
+
+1. **路径白名单**: 拒绝扫描 `/`, `/bin`, `/usr`, `C:\Windows` 等
+2. **递归限制**: 最大扫描深度 5 层
+3. **删除前验证**: 删除前再次检查路径安全性
+4. **默认不选**: 文件默认不选中，需用户主动选择
+
+## 支持清理的包管理器
+
+| 语言 | 包管理器 | 目录 |
+|------|----------|------|
+| JavaScript | npm, pnpm, yarn, bun | ~/.npm, ~/.pnpm-store |
+| Rust | cargo | ~/.cargo/registry |
+| Go | go | ~/go/pkg/mod |
+| Python | pip, conda, poetry | ~/.cache/pip |
+| Java | maven, gradle | ~/.m2, ~/.gradle |
+| .NET | nuget | ~/.nuget/packages |
+| Ruby | bundler | ~/.bundle/cache |
+| PHP | composer | ~/.composer/cache |
+| Dart | pub | ~/.pub-cache |
+
+## 构建
+
+```bash
+make build          # 当前平台
+make build-all      # 所有平台
+make dist           # 打包到 dist/
+```
+
+## 依赖
+
+- ratatui: TUI 框架
+- crossterm: 终端控制
+- walkdir: 目录遍历
+- sysinfo: 系统信息
+- anyhow: 错误处理
+- dirs: 标准目录路径
+
+## 快捷键
+
+| 按键 | 功能 |
+|------|------|
+| ↑↓/jk | 移动 |
+| Space | 切换选择 |
+| A | 全选 |
+| N | 取消全选 |
+| Enter | 确认删除 |
+| Esc | 取消 |
+| Q | 退出 |
+| R | 重新扫描 |
