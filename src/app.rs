@@ -71,12 +71,19 @@ impl App {
             for (dir, category) in trash_dirs {
                 if dir.exists() {
                     let dir_display = scanner::shorten_path(&dir);
-                    let _ = tx.send(ScanEvent::Scanning(format!("正在扫描: {} ({})", dir_display, category)));
-                    
+                    let _ = tx.send(ScanEvent::Scanning(format!(
+                        "正在扫描: {} ({})",
+                        dir_display, category
+                    )));
+
                     match scanner::scan_directory(&dir, &category) {
                         Ok(items) => all_items.extend(items),
                         Err(e) => {
-                            let _ = tx.send(ScanEvent::Error(format!("扫描 {} 失败: {}", dir.display(), e)));
+                            let _ = tx.send(ScanEvent::Error(format!(
+                                "扫描 {} 失败: {}",
+                                dir.display(),
+                                e
+                            )));
                         }
                     }
                 }
@@ -90,6 +97,8 @@ impl App {
 
     pub fn update_scan(&mut self) -> Result<bool> {
         let mut finished = false;
+        let mut new_items = None;
+
         if let Some(rx) = &self.scan_rx {
             while let Ok(event) = rx.try_recv() {
                 match event {
@@ -97,8 +106,7 @@ impl App {
                         self.current_scanning = path;
                     }
                     ScanEvent::Finished(items) => {
-                        self.tree = crate::tree::build_tree(items);
-                        self.refresh_display();
+                        new_items = Some(items);
                         finished = true;
                     }
                     ScanEvent::Error(e) => {
@@ -106,6 +114,11 @@ impl App {
                     }
                 }
             }
+        }
+
+        if let Some(items) = new_items {
+            self.tree = crate::tree::build_tree(items);
+            self.refresh_display();
         }
 
         if finished {
@@ -306,7 +319,9 @@ impl App {
                 while let Some(parent) = current {
                     if parent.exists()
                         && parent.is_dir()
-                        && std::fs::read_dir(parent).map(|mut d| d.next().is_none()).unwrap_or(false)
+                        && std::fs::read_dir(parent)
+                            .map(|mut d| d.next().is_none())
+                            .unwrap_or(false)
                         && !crate::scanner::is_system_critical(parent)
                     {
                         let _ = std::fs::remove_dir(parent);

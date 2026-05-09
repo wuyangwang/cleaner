@@ -118,13 +118,13 @@ fn draw_file_list(f: &mut Frame, app: &App, area: Rect) {
 
             if item.is_dir {
                 let collapse_icon = if item.collapsed { "[+]" } else { "[-]" };
-                
+
                 // 计算目录选择状态图标
                 // 由于 flatten_tree 已经处理了 selected 逻辑，我们这里简化判断
                 // 我们在 tree.rs 里已经让 selected 为 true 如果有任何子项被选中
                 // 为了精确显示半选，我们需要更详细的数据。
                 // 暂时用 selected 表示全选/半选，后续细化。
-                
+
                 let dir_node = find_dir_node(&app.tree, &item.path);
                 let (checkbox, checkbox_style) = if let Some(node) = dir_node {
                     let sel = node.selected_count();
@@ -132,9 +132,19 @@ fn draw_file_list(f: &mut Frame, app: &App, area: Rect) {
                     if sel == 0 {
                         ("[ ] ", Style::default().fg(Color::DarkGray))
                     } else if sel == total {
-                        ("[✓] ", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD))
+                        (
+                            "[✓] ",
+                            Style::default()
+                                .fg(Color::Green)
+                                .add_modifier(Modifier::BOLD),
+                        )
                     } else {
-                        ("[-] ", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD))
+                        (
+                            "[-] ",
+                            Style::default()
+                                .fg(Color::Yellow)
+                                .add_modifier(Modifier::BOLD),
+                        )
                     }
                 } else {
                     ("[ ] ", Style::default().fg(Color::DarkGray))
@@ -158,10 +168,7 @@ fn draw_file_list(f: &mut Frame, app: &App, area: Rect) {
                 let line = Line::from(vec![
                     Span::styled(indent.clone(), row_style),
                     Span::styled(checkbox, checkbox_style),
-                    Span::styled(
-                        format!("{} {} ", collapse_icon, dir_path),
-                        row_style,
-                    ),
+                    Span::styled(format!("{} {} ", collapse_icon, dir_path), row_style),
                     Span::styled(info, Style::default().fg(Color::DarkGray)),
                 ]);
                 ListItem::new(line)
@@ -220,7 +227,10 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
             Span::styled(" 选择  ", Style::default().fg(Color::Gray)),
             Span::styled("回车", Style::default().fg(Color::Cyan)),
             Span::styled(" 折叠  ", Style::default().fg(Color::Gray)),
-            Span::styled("D", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "D",
+                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+            ),
             Span::styled(" 删除  ", Style::default().fg(Color::Gray)),
             Span::styled("A/N", Style::default().fg(Color::Cyan)),
             Span::styled(" 全选/取消  ", Style::default().fg(Color::Gray)),
@@ -255,7 +265,10 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
     f.render_widget(paragraph, area);
 }
 
-fn find_dir_node<'a>(nodes: &'a [crate::tree::TreeNode], path: &std::path::Path) -> Option<&'a crate::tree::DirNode> {
+fn find_dir_node<'a>(
+    nodes: &'a [crate::tree::TreeNode],
+    path: &std::path::Path,
+) -> Option<&'a crate::tree::DirNode> {
     for node in nodes {
         if let crate::tree::TreeNode::Dir(dir) = node {
             if dir.path == path {

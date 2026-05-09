@@ -56,17 +56,18 @@ src/
 
 ## 支持清理的包管理器
 
-| 语言 | 包管理器 | 目录 |
-|------|----------|------|
-| JavaScript | npm, pnpm, yarn, bun | ~/.npm, ~/.pnpm-store |
-| Rust | cargo | ~/.cargo/registry |
-| Go | go | ~/go/pkg/mod |
-| Python | pip, conda, poetry | ~/.cache/pip |
-| Java | maven, gradle | ~/.m2, ~/.gradle |
-| .NET | nuget | ~/.nuget/packages |
-| Ruby | bundler | ~/.bundle/cache |
-| PHP | composer | ~/.composer/cache |
-| Dart | pub | ~/.pub-cache |
+| 语言/工具 | 包管理器 | 目录 | 副作用 |
+|------|----------|------|------|
+| JavaScript | npm, pnpm, yarn, bun | ~/.npm, ~/.pnpm-store | 需重下 |
+| Rust | cargo | ~/.cargo/registry/src, target | 需重编 |
+| Go | go | ~/go/pkg/mod | 需重下 |
+| Python | pip, poetry | ~/.cache/pip, pypoetry | 需重下 |
+| Java | maven, gradle | ~/.m2, ~/.gradle | 需重下 |
+| Deno | deno | ~/.deno | 需重下 |
+| 浏览器 | Chrome | ~/.cache/google-chrome | 无 |
+| 系统 | Logs, Trash | /var/log, ~/.Trash | 无 |
+| 工具 | Homebrew, CocoaPods | ~/Library/Caches/... | 需重下 |
+| 测试 | Playwright, Cypress | ~/.cache/... | 需重下 |
 
 ## 构建
 
@@ -141,10 +142,12 @@ git commit -m "style: 格式化代码"
 | 按键 | 功能 |
 |------|------|
 | ↑↓/jk | 移动 |
-| Space | 折叠/展开目录 或 选择/取消文件 |
+| Space | 选择/取消选择（支持目录级递归） |
+| Enter | 折叠/展开目录 |
+| D | 进入删除确认界面 |
 | A | 全选 |
 | N | 取消全选 |
-| Enter | 确认删除 |
-| Esc | 取消 |
 | Q | 退出 |
 | R | 重新扫描 |
+| Esc | 取消删除确认 |
+
