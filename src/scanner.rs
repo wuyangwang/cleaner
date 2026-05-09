@@ -8,12 +8,29 @@ use crate::targets;
 pub struct TrashItem {
     pub path: PathBuf,
     pub size: u64,
+    #[allow(dead_code)]
+    pub category: String,
 }
 
 impl TrashItem {
-    pub fn new(path: PathBuf, size: u64) -> Self {
-        Self { path, size }
+    pub fn new(path: PathBuf, size: u64, category: String) -> Self {
+        Self {
+            path,
+            size,
+            category,
+        }
     }
+}
+
+pub fn shorten_path(path: &Path) -> String {
+    let path_str = path.to_string_lossy();
+    if let Some(home) = targets::get_home_dir() {
+        let home_str = home.to_string_lossy();
+        if path_str.starts_with(&*home_str) {
+            return path_str.replacen(&*home_str, "~", 1);
+        }
+    }
+    path_str.to_string()
 }
 
 pub fn format_size(bytes: u64) -> String {
@@ -36,9 +53,9 @@ pub fn scan_trash_dirs() -> Result<Vec<TrashItem>> {
     let mut items = Vec::new();
     let trash_dirs = targets::get_trash_directories();
 
-    for (dir, _category) in trash_dirs {
+    for (dir, category) in trash_dirs {
         if dir.exists() {
-            items.extend(scan_directory(&dir)?);
+            items.extend(scan_directory(&dir, &category)?);
         }
     }
 
@@ -46,7 +63,13 @@ pub fn scan_trash_dirs() -> Result<Vec<TrashItem>> {
     Ok(items)
 }
 
-fn scan_directory(dir: &Path) -> Result<Vec<TrashItem>> {
+fn should_skip_path(path: &Path) -> bool {
+    let path_str = path.to_string_lossy();
+    let skip_patterns = ["/registry/src/", "/.cargo/git/", "/node_modules/.cache/"];
+    skip_patterns.iter().any(|p| path_str.contains(p))
+}
+
+fn scan_directory(dir: &Path, category: &str) -> Result<Vec<TrashItem>> {
     let mut items = Vec::new();
 
     if is_system_critical(dir) {
@@ -61,7 +84,7 @@ fn scan_directory(dir: &Path) -> Result<Vec<TrashItem>> {
     {
         let path = entry.path();
 
-        if is_system_critical(path) {
+        if is_system_critical(path) || should_skip_path(path) {
             continue;
         }
 
@@ -69,7 +92,11 @@ fn scan_directory(dir: &Path) -> Result<Vec<TrashItem>> {
             && let Ok(metadata) = entry.metadata()
             && metadata.len() > 0
         {
-            items.push(TrashItem::new(path.to_path_buf(), metadata.len()));
+            items.push(TrashItem::new(
+                path.to_path_buf(),
+                metadata.len(),
+                category.to_string(),
+            ));
         }
     }
 

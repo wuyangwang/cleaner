@@ -1,5 +1,5 @@
 use crate::app::{App, AppState};
-use crate::scanner::format_size;
+use crate::scanner::{format_size, shorten_path};
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
@@ -92,11 +92,7 @@ fn draw_file_list(f: &mut Frame, app: &App, area: Rect) {
 
             if item.is_dir {
                 let collapse_icon = if item.collapsed { "[+]" } else { "[-]" };
-                let dir_name = item
-                    .path
-                    .file_name()
-                    .map(|n| n.to_string_lossy().to_string())
-                    .unwrap_or_else(|| item.path.display().to_string());
+                let dir_path = shorten_path(&item.path);
                 let info = format!("({} 项, {})", item.file_count, format_size(item.size));
                 let indent = "  ".repeat(item.depth);
 
@@ -113,7 +109,7 @@ fn draw_file_list(f: &mut Frame, app: &App, area: Rect) {
 
                 let line = Line::from(vec![
                     Span::styled(
-                        format!("{}{}{} ", indent, collapse_icon, dir_name),
+                        format!("{}{}{} ", indent, collapse_icon, dir_path),
                         row_style,
                     ),
                     Span::styled(info, Style::default().fg(Color::DarkGray)),
