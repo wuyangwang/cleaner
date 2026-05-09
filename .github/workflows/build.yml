@@ -5,8 +5,11 @@ on:
     branches: [master]
   workflow_dispatch:
 
+env:
+  CARGO_TERM_COLOR: always
+
 jobs:
-  build-windows:
+  build:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,36 +26,32 @@ jobs:
           name: cleaner-windows-amd64
           path: target/release/cleaner.exe
 
-  # build-linux:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #
-  #     - name: Install Rust
-  #       uses: dtolnay/rust-toolchain@stable
-  #
-  #     - name: Build
-  #       run: cargo build --release
-  #
-  #     - name: Upload artifact
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: cleaner-linux-amd64
-  #         path: target/release/cleaner
+  release:
+    needs: [build]
+    runs-on: windows-latest
+    if: github.ref == 'refs/heads/master'
+    permissions:
+      contents: write
 
-  # build-macos:
-  #   runs-on: macos-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #
-  #     - name: Install Rust
-  #       uses: dtolnay/rust-toolchain@stable
-  #
-  #     - name: Build
-  #       run: cargo build --release
-  #
-  #     - name: Upload artifact
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: cleaner-macos-amd64
-  #         path: target/release/cleaner
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Get version from Cargo.toml
+        shell: pwsh
+        run: |
+          $ver = Select-String -Path Cargo.toml -Pattern '^version = "(.+)"' | % { $_.Matches.Groups[1].Value }
+          echo "APP_VERSION=$ver" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.APP_VERSION }}
+          name: Cleaner v${{ env.APP_VERSION }}
+          files: artifacts/**/*
+          generate_release_notes: true
+          make_latest: true
