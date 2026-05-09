@@ -22,8 +22,8 @@
 |------|------|
 | `↑↓` / `jk` | 移动 |
 | `Space` | 展开/折叠目录，选择/取消文件 |
-| `A` | 全选 |
-| `N` | 取消全选 |
+| `A` | 全选/取消全选 |
+| `D` | 进入删除确认界面 |
 | `Enter` | 确认删除 |
 | `Esc` | 取消 |
 | `Q` | 退出 |
@@ -49,6 +49,7 @@ make build          # 构建
 make check          # 代码检查 (clippy + fmt)
 make test           # 运行测试
 make dist           # 全平台打包
+make release        # 发布版本（创建 tag 并推送，触发 GitHub Actions 构建）
 ```
 
 ## 安全机制
