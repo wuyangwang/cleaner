@@ -136,6 +136,7 @@ git commit -m "style: 格式化代码"
 2. 提交信息遵循 Conventional Commits: `feat:`, `fix:`, `refactor:`, `docs:`, `style:`, `chore:`
 3. 先格式化再提交: `cargo fmt && cargo check && git add . && git commit`
 4. 完成 UI/交互改动后，运行一次确认能编译通过
+5. 发布版本: `make release`（自动创建 tag 并推送，触发 GitHub Actions 构建）
 
 ## 快捷键
 

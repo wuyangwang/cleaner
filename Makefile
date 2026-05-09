@@ -1,4 +1,4 @@
-.PHONY: build build-all clean install test
+.PHONY: build build-all clean install test release
 
 # 当前平台构建
 build:
@@ -65,6 +65,14 @@ dist: build-all
 	@echo "打包完成，文件在 dist/ 目录"
 	@ls -lh dist/
 
+# 发布版本（创建 tag 并推送，触发 GitHub Actions 构建）
+release:
+	@ver=$$(grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/'); \
+	echo "发布版本: v$$ver"; \
+	git tag "v$$ver" && \
+	git push origin "v$$ver" && \
+	echo "已推送 tag v$$ver，GitHub Actions 将自动构建"
+
 # 帮助
 help:
 	@echo "可用命令:"
@@ -79,3 +87,4 @@ help:
 	@echo "  make fmt            - 格式化代码"
 	@echo "  make clean          - 清理构建产物"
 	@echo "  make dist           - 打包所有平台"
+	@echo "  make release        - 发布版本（创建并推送 tag）"
