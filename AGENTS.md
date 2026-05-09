@@ -10,6 +10,8 @@ src/
 ├── app.rs       # 应用状态机
 ├── ui.rs        # ratatui 界面渲染
 ├── scanner.rs   # 文件扫描 + 安全检查
+├── tree.rs      # 树结构（目录/文件）
+├── targets.rs   # 清理目标目录配置
 ├── disk.rs      # 磁盘空间检测
 └── error.rs     # 错误类型枚举
 ```
@@ -23,7 +25,16 @@ src/
 ### scanner.rs - 文件扫描
 - `scan_trash_dirs()`: 扫描各包管理器缓存目录
 - `is_system_critical()`: 安全检查，禁止删除系统目录
-- `TrashItem`: 文件条目（路径、大小、选中状态）
+- `TrashItem`: 文件条目（路径、大小、分类）
+
+### tree.rs - 树结构
+- `TreeNode`: 树节点（目录/文件），支持折叠展开
+- `build_tree()`: 将扁平文件列表构建为目录树
+- `flatten_tree()`: 将目录树扁平化为显示列表
+
+### targets.rs - 清理目标配置
+- `get_trash_directories()`: 获取各包管理器缓存目录列表
+- `get_home_dir()`: 获取用户主目录
 
 ### disk.rs - 磁盘信息
 - `get_disk_info()`: 获取指定路径的磁盘可用空间
@@ -130,10 +141,9 @@ git commit -m "style: 格式化代码"
 | 按键 | 功能 |
 |------|------|
 | ↑↓/jk | 移动 |
-| Space | 切换选择 |
+| Space | 折叠/展开目录 或 选择/取消文件 |
 | A | 全选 |
 | N | 取消全选 |
-| S | 切换排序（最大/最小优先） |
 | Enter | 确认删除 |
 | Esc | 取消 |
 | Q | 退出 |

@@ -10,6 +10,8 @@ mod app;
 mod disk;
 mod error;
 mod scanner;
+mod targets;
+mod tree;
 mod ui;
 
 use app::{App, AppState};
@@ -43,7 +45,6 @@ fn main() -> Result<()> {
                     KeyCode::Char(' ') => app.toggle_selected(),
                     KeyCode::Char('a') | KeyCode::Char('A') => app.select_all(),
                     KeyCode::Char('n') | KeyCode::Char('N') => app.deselect_all(),
-                    KeyCode::Char('s') | KeyCode::Char('S') => app.toggle_sort(),
                     KeyCode::Enter if app.get_selected_count() > 0 => {
                         app.state = AppState::Confirming;
                     }

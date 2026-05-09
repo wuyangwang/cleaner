@@ -7,7 +7,6 @@ use ratatui::{
     text::{Line, Span},
     widgets::{Block, Borders, Gauge, List, ListItem, Paragraph},
 };
-use std::collections::{HashMap, HashSet};
 
 pub fn draw(f: &mut Frame, app: &App) {
     let chunks = Layout::default()
@@ -61,9 +60,7 @@ fn draw_header(f: &mut Frame, app: &App, area: Rect) {
         ),
     };
 
-    let block = Block::default()
-        .borders(Borders::ALL)
-        .title("Trash Cleaner");
+    let block = Block::default().borders(Borders::ALL).title("垃圾清理");
 
     let paragraph = Paragraph::new(header).block(block).style(header_style);
 
@@ -71,44 +68,7 @@ fn draw_header(f: &mut Frame, app: &App, area: Rect) {
 }
 
 fn draw_file_list(f: &mut Frame, app: &App, area: Rect) {
-    let mut cat_info: HashMap<&str, (usize, u64)> = HashMap::new();
-    for item in &app.items {
-        let entry = cat_info.entry(&item.category).or_insert((0, 0));
-        entry.0 += 1;
-        entry.1 += item.size;
-    }
-
-    struct DisplayRow {
-        is_header: bool,
-        category: String,
-        count: usize,
-        total_size: u64,
-        item_idx: Option<usize>,
-    }
-
-    let mut display_rows: Vec<DisplayRow> = Vec::new();
-    let mut seen = HashSet::new();
-    for (item_idx, item) in app.items.iter().enumerate() {
-        if seen.insert(item.category.as_str()) {
-            let &(count, total_size) = cat_info.get(item.category.as_str()).unwrap();
-            display_rows.push(DisplayRow {
-                is_header: true,
-                category: item.category.clone(),
-                count,
-                total_size,
-                item_idx: None,
-            });
-        }
-        display_rows.push(DisplayRow {
-            is_header: false,
-            category: String::new(),
-            count: 0,
-            total_size: 0,
-            item_idx: Some(item_idx),
-        });
-    }
-
-    let total_visual = display_rows.len();
+    let total_visual = app.display_items.len();
     let list_height = (area.height.saturating_sub(2)) as usize;
 
     let offset = if total_visual > list_height {
@@ -121,34 +81,53 @@ fn draw_file_list(f: &mut Frame, app: &App, area: Rect) {
         0
     };
 
-    let items: Vec<ListItem> = display_rows
+    let items: Vec<ListItem> = app
+        .display_items
         .iter()
         .enumerate()
         .skip(offset)
         .take(list_height)
-        .map(|(vis_idx, row)| {
-            if row.is_header {
-                let header_text = format!(
-                    " {} ({} 项, {}) ",
-                    row.category,
-                    row.count,
-                    format_size(row.total_size),
-                );
-                let line = Line::from(vec![Span::styled(
-                    format!(
-                        "{:=^1$}",
-                        header_text,
-                        area.width.saturating_sub(2) as usize
-                    ),
+        .map(|(vis_idx, item)| {
+            let is_cursor = vis_idx == app.selected_index;
+
+            if item.is_dir {
+                let collapse_icon = if item.collapsed { "[+]" } else { "[-]" };
+                let dir_name = item
+                    .path
+                    .file_name()
+                    .map(|n| n.to_string_lossy().to_string())
+                    .unwrap_or_else(|| item.path.display().to_string());
+                let info = format!("({} 项, {})", item.file_count, format_size(item.size));
+                let indent = "  ".repeat(item.depth);
+
+                let row_style = if is_cursor {
+                    Style::default()
+                        .fg(Color::Black)
+                        .bg(Color::White)
+                        .add_modifier(Modifier::BOLD)
+                } else {
                     Style::default()
                         .fg(Color::Cyan)
-                        .add_modifier(Modifier::BOLD),
-                )]);
+                        .add_modifier(Modifier::BOLD)
+                };
+
+                let line = Line::from(vec![
+                    Span::styled(
+                        format!("{}{}{} ", indent, collapse_icon, dir_name),
+                        row_style,
+                    ),
+                    Span::styled(info, Style::default().fg(Color::DarkGray)),
+                ]);
                 ListItem::new(line)
             } else {
-                let item = &app.items[row.item_idx.unwrap()];
-                let path = item.path.display().to_string();
-                let size = item.size_str();
+                let checkbox = if item.selected { "[✓]" } else { "[ ]" };
+                let indent = "  ".repeat(item.depth);
+                let file_name = item
+                    .path
+                    .file_name()
+                    .map(|n| n.to_string_lossy().to_string())
+                    .unwrap_or_else(|| item.path.display().to_string());
+                let size = format_size(item.size);
 
                 let checkbox_style = if item.selected {
                     Style::default()
@@ -157,9 +136,7 @@ fn draw_file_list(f: &mut Frame, app: &App, area: Rect) {
                 } else {
                     Style::default().fg(Color::DarkGray)
                 };
-                let checkbox = if item.selected { "[✓]" } else { "[ ]" };
 
-                let is_cursor = vis_idx == app.selected_index;
                 let row_style = if is_cursor {
                     Style::default()
                         .fg(Color::Black)
@@ -172,8 +149,8 @@ fn draw_file_list(f: &mut Frame, app: &App, area: Rect) {
                 };
 
                 let line = Line::from(vec![
-                    Span::styled(format!("{} ", checkbox), checkbox_style),
-                    Span::styled(format!("{:<80} ", path), row_style),
+                    Span::styled(format!("{}{} ", indent, checkbox), checkbox_style),
+                    Span::styled(format!("{:<60} ", file_name), row_style),
                     Span::styled(size, row_style),
                 ]);
                 ListItem::new(line)
@@ -229,15 +206,13 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
             Span::styled("↑↓", Style::default().fg(Color::Cyan)),
             Span::styled(" 移动  ", Style::default().fg(Color::Gray)),
             Span::styled("空格", Style::default().fg(Color::Cyan)),
-            Span::styled(" 选择/取消  ", Style::default().fg(Color::Gray)),
+            Span::styled(" 折叠/选择  ", Style::default().fg(Color::Gray)),
             Span::styled("A", Style::default().fg(Color::Cyan)),
             Span::styled(" 全选  ", Style::default().fg(Color::Gray)),
             Span::styled("N", Style::default().fg(Color::Cyan)),
             Span::styled(" 取消全选  ", Style::default().fg(Color::Gray)),
             Span::styled("回车", Style::default().fg(Color::Green)),
             Span::styled(" 确认删除  ", Style::default().fg(Color::Gray)),
-            Span::styled("S", Style::default().fg(Color::Cyan)),
-            Span::styled(" 排序  ", Style::default().fg(Color::Gray)),
             Span::styled("Q", Style::default().fg(Color::Red)),
             Span::styled(" 退出", Style::default().fg(Color::Gray)),
         ],
@@ -281,7 +256,7 @@ pub fn draw_progress(f: &mut Frame, progress: usize, total: usize) {
     let popup = centered_rect(60, 20, area);
 
     let gauge = Gauge::default()
-        .block(Block::default().title("Cleaning...").borders(Borders::ALL))
+        .block(Block::default().title("清理中...").borders(Borders::ALL))
         .gauge_style(Style::default().fg(Color::Green).bg(Color::Black))
         .percent(percent);
 
