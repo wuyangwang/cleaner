@@ -216,10 +216,14 @@ impl App {
         }
 
         if path.exists() {
-            if path.is_dir() {
-                std::fs::remove_dir_all(path)?;
+            let result = if path.is_dir() {
+                std::fs::remove_dir_all(path)
             } else {
-                std::fs::remove_file(path)?;
+                std::fs::remove_file(path)
+            };
+
+            if let Err(e) = result {
+                self.error_message = Some(format!("跳过 {}: {}", path.display(), e));
             }
         }
 
