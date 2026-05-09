@@ -207,6 +207,21 @@ fn draw_file_list(f: &mut Frame, app: &App, area: Rect) {
 }
 
 fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
+    if let Some(error_msg) = &app.error_message {
+        let error_line = Line::from(vec![
+            Span::styled("⚠ ", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+            Span::styled(error_msg.as_str(), Style::default().fg(Color::Red)),
+            Span::styled("  (按 Esc 关闭)", Style::default().fg(Color::DarkGray)),
+        ]);
+        let block = Block::default()
+            .borders(Borders::ALL)
+            .title("错误信息")
+            .border_style(Style::default().fg(Color::Red));
+        let paragraph = Paragraph::new(error_line).block(block);
+        f.render_widget(paragraph, area);
+        return;
+    }
+
     let help = match app.state {
         AppState::Scanning => vec![Span::styled(
             "正在扫描... 请稍候",

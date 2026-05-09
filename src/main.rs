@@ -75,6 +75,9 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>) -> Result
                     }
                     AppState::Selecting | AppState::Complete => match key.code {
                         KeyCode::Char('q') => return Ok(()),
+                        KeyCode::Esc => {
+                            app.error_message = None;
+                        }
                         KeyCode::Char('r') | KeyCode::Char('R') => {
                             app = App::new();
                             app.scan()?;
@@ -97,7 +100,7 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>) -> Result
                         _ => {}
                     },
                     AppState::Confirming => match key.code {
-                        KeyCode::Enter => {
+                        KeyCode::Enter | KeyCode::Char('d') | KeyCode::Char('D') => {
                             app.start_clean();
                         }
                         KeyCode::Esc => {
