@@ -64,6 +64,16 @@ jobs:
         with:
           path: artifacts
 
+      - name: Rename artifacts for release
+        run: |
+          mkdir -p release
+          mv artifacts/cleaner-windows-amd64/cleaner.exe release/cleaner-windows-amd64.exe
+          mv artifacts/cleaner-linux-amd64/cleaner release/cleaner-linux-amd64
+          mv artifacts/cleaner-macos-amd64/cleaner release/cleaner-macos-amd64
+          mv artifacts/cleaner-macos-arm64/cleaner release/cleaner-macos-arm64
+          chmod +x release/cleaner-*
+          ls -lh release/
+
       - name: Get version from Cargo.toml
         run: |
           ver=$(grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')
@@ -74,6 +84,6 @@ jobs:
         with:
           tag_name: v${{ env.APP_VERSION }}
           name: Cleaner v${{ env.APP_VERSION }}
-          files: artifacts/**/*
+          files: release/*
           generate_release_notes: true
           make_latest: true
