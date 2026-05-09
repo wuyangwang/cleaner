@@ -34,14 +34,11 @@ pub fn get_trash_directories() -> Vec<(PathBuf, String)> {
     let home = get_home_dir();
 
     if let Some(home) = home {
-        // --- 极低副作用（日志、临时文件） ---
-        dirs.push((home.join(".npm").join("_logs"), "npm 日志".to_string()));
-        dirs.push((home.join(".cargo").join("registry").join("src"), "Cargo 已解压源码 (可安全清理)".to_string()));
-        
+        // --- 1. 浏览器与系统缓存 (通常很大且扫描快) ---
         #[cfg(target_os = "linux")]
         {
-            dirs.push((home.join(".cache").join("thumbnails"), "缩略图缓存".to_string()));
             dirs.push((home.join(".cache").join("google-chrome"), "Chrome 浏览器缓存".to_string()));
+            dirs.push((home.join(".cache").join("thumbnails"), "缩略图缓存".to_string()));
         }
         #[cfg(target_os = "macos")]
         {
@@ -49,11 +46,25 @@ pub fn get_trash_directories() -> Vec<(PathBuf, String)> {
             dirs.push((home.join("Library").join("Logs"), "系统日志".to_string()));
         }
 
-        // --- 高副作用（删除后需重新下载/编译） ---
+        // --- 2. 开发工具临时日志与解压源码 (安全清理) ---
+        dirs.push((home.join(".npm").join("_logs"), "npm 日志".to_string()));
+        dirs.push((home.join(".cargo").join("registry").join("src"), "Cargo 已解压源码 (可安全清理)".to_string()));
+        dirs.push((home.join(".cache").join("Cypress"), "Cypress 缓存".to_string()));
+        dirs.push((home.join(".cache").join("electron"), "Electron 缓存".to_string()));
+        dirs.push((home.join(".cache").join("ms-playwright"), "Playwright 浏览器".to_string()));
+        #[cfg(target_os = "macos")]
+        {
+            dirs.push((home.join("Library").join("Caches").join("ms-playwright"), "Playwright 浏览器".to_string()));
+            dirs.push((home.join("Library").join("Caches").join("Homebrew"), "Homebrew 缓存".to_string()));
+            dirs.push((home.join("Library").join("Caches").join("CocoaPods"), "CocoaPods 缓存".to_string()));
+        }
+
+        // --- 3. 包管理工具下载缓存 (副作用：清理后需重下) ---
         // JavaScript / Node.js
         dirs.push((home.join(".npm"), "npm 缓存 (清理后需重新下载)".to_string()));
         dirs.push((home.join(".pnpm-store"), "pnpm 存储 (慎删：影响所有 pnpm 项目)".to_string()));
         dirs.push((home.join(".yarn"), "yarn 缓存 (清理后需重新下载)".to_string()));
+        dirs.push((home.join(".deno"), "deno 缓存".to_string()));
 
         // Rust / Cargo
         let cargo_home = std::env::var("CARGO_HOME")
@@ -78,109 +89,18 @@ pub fn get_trash_directories() -> Vec<(PathBuf, String)> {
         // Java
         dirs.push((home.join(".m2").join("repository"), "Maven 仓库 (慎删：重新下载极慢)".to_string()));
         dirs.push((home.join(".gradle").join("caches"), "Gradle 缓存 (清理后需重新下载)".to_string()));
-        dirs.push((
-            home.join(".gradle").join("wrapper"),
-            "gradle 包装器".to_string(),
-        ));
-        #[cfg(target_os = "macos")]
-        {
-            dirs.push((
-                home.join("Library").join("Caches").join("Gradle"),
-                "gradle 缓存".to_string(),
-            ));
-        }
-        dirs.push((home.join(".sbt"), "sbt 缓存".to_string()));
-        dirs.push((home.join(".ivy2"), "ivy2 缓存".to_string()));
-        dirs.push((
-            home.join(".cache").join("coursier"),
-            "coursier 缓存".to_string(),
-        ));
+        dirs.push((home.join(".gradle").join("wrapper"), "Gradle 包装器".to_string()));
 
-        // .NET / C#
-        dirs.push((
-            home.join(".nuget").join("packages"),
-            "nuget 缓存".to_string(),
-        ));
-        #[cfg(target_os = "windows")]
-        {
-            if let Ok(local_app_data) = std::env::var("LOCALAPPDATA") {
-                dirs.push((
-                    PathBuf::from(&local_app_data).join("NuGet").join("Cache"),
-                    "nuget 缓存".to_string(),
-                ));
-            }
-        }
-        dirs.push((
-            home.join(".dotnet").join("tools"),
-            "dotnet 工具".to_string(),
-        ));
-
-        // Ruby
-        dirs.push((
-            home.join(".bundle").join("cache"),
-            "bundler 缓存".to_string(),
-        ));
-        dirs.push((home.join(".gem"), "gem 缓存".to_string()));
-        dirs.push((home.join(".cache").join("gem"), "gem 缓存".to_string()));
-        #[cfg(target_os = "macos")]
-        {
-            dirs.push((
-                home.join("Library").join("Caches").join("gem"),
-                "gem 缓存".to_string(),
-            ));
-        }
-
-        // PHP
-        dirs.push((
-            home.join(".composer").join("cache"),
-            "composer 缓存".to_string(),
-        ));
-        dirs.push((
-            home.join(".cache").join("composer"),
-            "composer 缓存".to_string(),
-        ));
-
-        // Dart / Flutter
-        dirs.push((home.join(".pub-cache"), "pub 缓存".to_string()));
-        dirs.push((home.join(".dart"), "dart 缓存".to_string()));
-        #[cfg(target_os = "macos")]
-        {
-            dirs.push((
-                home.join("Library").join("Caches").join("pub"),
-                "pub 缓存".to_string(),
-            ));
-        }
-
-        // Deno
-        dirs.push((home.join(".deno"), "deno 缓存".to_string()));
-        dirs.push((home.join(".cache").join("deno"), "deno 缓存".to_string()));
-
-        // Homebrew
-        #[cfg(target_os = "macos")]
-        {
-            dirs.push((home.join("Library").join("Caches").join("Homebrew"), "Homebrew 缓存".to_string()));
-        }
+        // --- 4. 通用与系统回收站 ---
         #[cfg(target_os = "linux")]
         {
-            dirs.push((home.join(".cache").join("Homebrew"), "Homebrew 缓存".to_string()));
+            dirs.push((home.join(".cache"), "用户通用缓存".to_string()));
+            dirs.push((home.join(".local").join("share").join("Trash").join("files"), "回收站".to_string()));
         }
-
-        // CocoaPods (iOS/macOS)
         #[cfg(target_os = "macos")]
         {
-            dirs.push((home.join("Library").join("Caches").join("CocoaPods"), "CocoaPods 缓存".to_string()));
-        }
-
-        // Testing & Tools
-        dirs.push((home.join(".cache").join("Cypress"), "Cypress 缓存".to_string()));
-        dirs.push((home.join(".cache").join("electron"), "Electron 缓存".to_string()));
-        dirs.push((home.join(".cache").join("ms-playwright"), "Playwright 浏览器".to_string()));
-        #[cfg(target_os = "macos")]
-        {
-            dirs.push((
-                home.join("Library").join("Caches").join("ms-playwright"),
-                "Playwright 浏览器".to_string(),
-            ));
+            dirs.push((home.join("Library").join("Caches"), "用户通用缓存".to_string()));
+            dirs.push((home.join(".Trash"), "废纸篓".to_string()));
         }
 
         // Haskell

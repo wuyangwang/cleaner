@@ -201,9 +201,14 @@ pub fn flatten_tree(nodes: &[TreeNode], depth: usize) -> Vec<DisplayItem> {
     for node in nodes {
         match node {
             TreeNode::Dir(dir) => {
+                let total_size = dir.total_size();
+                if total_size == 0 {
+                    continue;
+                }
+
                 let selected_count = dir.selected_count();
                 let file_count = dir.file_count();
-                
+...
                 // 确定目录的选择状态：0-未选, 1-半选, 2-全选
                 let selected_status = if selected_count == 0 {
                     0

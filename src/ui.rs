@@ -42,7 +42,7 @@ fn draw_header(f: &mut Frame, app: &App, area: Rect) {
 
     let (state_text, state_style) = match app.state {
         AppState::Scanning => (
-            "正在扫描...".to_string(),
+            app.current_scanning.clone(),
             Style::default().fg(Color::Yellow),
         ),
         AppState::Selecting => {
@@ -85,6 +85,15 @@ fn draw_header(f: &mut Frame, app: &App, area: Rect) {
 }
 
 fn draw_file_list(f: &mut Frame, app: &App, area: Rect) {
+    if matches!(app.state, AppState::Scanning) {
+        let block = Block::default().borders(Borders::ALL).title("文件列表");
+        let paragraph = Paragraph::new("\n\n  正在扫描系统中，请稍候...\n\n  扫描顺序：\n  1. 浏览器与系统缓存\n  2. 开发工具日志与临时源码\n  3. 包管理下载缓存\n  4. 通用与系统回收站")
+            .block(block)
+            .style(Style::default().fg(Color::Gray));
+        f.render_widget(paragraph, area);
+        return;
+    }
+
     let total_visual = app.display_items.len();
     let list_height = (area.height.saturating_sub(2)) as usize;
 
@@ -210,7 +219,9 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
             Span::styled("空格", Style::default().fg(Color::Cyan)),
             Span::styled(" 选择  ", Style::default().fg(Color::Gray)),
             Span::styled("回车", Style::default().fg(Color::Cyan)),
-            Span::styled(" 折叠/确认  ", Style::default().fg(Color::Gray)),
+            Span::styled(" 折叠  ", Style::default().fg(Color::Gray)),
+            Span::styled("D", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+            Span::styled(" 删除  ", Style::default().fg(Color::Gray)),
             Span::styled("A/N", Style::default().fg(Color::Cyan)),
             Span::styled(" 全选/取消  ", Style::default().fg(Color::Gray)),
             Span::styled("Q", Style::default().fg(Color::Red)),

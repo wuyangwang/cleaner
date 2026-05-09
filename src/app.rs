@@ -1,8 +1,9 @@
 use crate::disk::{self, DiskInfo};
-use crate::scanner;
+use crate::scanner::{self, TrashItem};
 use crate::tree::{DisplayItem, TreeNode};
 use anyhow::Result;
 use std::path::PathBuf;
+use std::sync::mpsc::{self, Receiver};
 
 pub enum AppState {
     Scanning,
@@ -10,6 +11,12 @@ pub enum AppState {
     Confirming,
     Cleaning,
     Complete,
+}
+
+pub enum ScanEvent {
+    Scanning(String),
+    Finished(Vec<TrashItem>),
+    Error(String),
 }
 
 pub struct App {
@@ -22,6 +29,8 @@ pub struct App {
     pub clean_progress: usize,
     pub clean_total: usize,
     pub error_message: Option<String>,
+    pub scan_rx: Option<Receiver<ScanEvent>>,
+    pub current_scanning: String,
 }
 
 impl App {
@@ -36,6 +45,8 @@ impl App {
             clean_progress: 0,
             clean_total: 0,
             error_message: None,
+            scan_rx: None,
+            current_scanning: String::new(),
         }
     }
 
@@ -45,22 +56,69 @@ impl App {
 
     pub fn scan(&mut self) -> Result<()> {
         self.state = AppState::Scanning;
+        self.current_scanning = "准备扫描...".to_string();
 
         let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
         self.disk_before = Some(disk::get_disk_info(&home)?);
 
-        let items = scanner::scan_trash_dirs()?;
-        self.tree = crate::tree::build_tree(items);
-        self.refresh_display();
+        let (tx, rx) = mpsc::channel();
+        self.scan_rx = Some(rx);
 
-        if self.display_items.is_empty() {
-            self.state = AppState::Complete;
-        } else {
-            self.state = AppState::Selecting;
-            self.selected_index = 0;
-        }
+        std::thread::spawn(move || {
+            let trash_dirs = crate::targets::get_trash_directories();
+            let mut all_items = Vec::new();
+
+            for (dir, category) in trash_dirs {
+                if dir.exists() {
+                    let dir_display = scanner::shorten_path(&dir);
+                    let _ = tx.send(ScanEvent::Scanning(format!("正在扫描: {} ({})", dir_display, category)));
+                    
+                    match scanner::scan_directory(&dir, &category) {
+                        Ok(items) => all_items.extend(items),
+                        Err(e) => {
+                            let _ = tx.send(ScanEvent::Error(format!("扫描 {} 失败: {}", dir.display(), e)));
+                        }
+                    }
+                }
+            }
+
+            let _ = tx.send(ScanEvent::Finished(all_items));
+        });
 
         Ok(())
+    }
+
+    pub fn update_scan(&mut self) -> Result<bool> {
+        let mut finished = false;
+        if let Some(rx) = &self.scan_rx {
+            while let Ok(event) = rx.try_recv() {
+                match event {
+                    ScanEvent::Scanning(path) => {
+                        self.current_scanning = path;
+                    }
+                    ScanEvent::Finished(items) => {
+                        self.tree = crate::tree::build_tree(items);
+                        self.refresh_display();
+                        finished = true;
+                    }
+                    ScanEvent::Error(e) => {
+                        self.error_message = Some(e);
+                    }
+                }
+            }
+        }
+
+        if finished {
+            self.scan_rx = None;
+            if self.display_items.is_empty() {
+                self.state = AppState::Complete;
+            } else {
+                self.state = AppState::Selecting;
+                self.selected_index = 0;
+            }
+        }
+
+        Ok(finished)
     }
 
     pub fn toggle_collapse(&mut self) {
