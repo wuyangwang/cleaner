@@ -17,12 +17,33 @@ mod ui;
 use app::{App, AppState};
 
 fn main() -> Result<()> {
+    // 设置 panic hook 以确保在程序崩溃时恢复终端
+    let default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        let _ = disable_raw_mode();
+        let mut stdout = std::io::stdout();
+        let _ = execute!(stdout, LeaveAlternateScreen);
+        let _ = execute!(stdout, crossterm::cursor::Show);
+        default_panic(info);
+    }));
+
     enable_raw_mode()?;
     let mut stdout = std::io::stdout();
     execute!(stdout, EnterAlternateScreen)?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
+    let result = run_app(&mut terminal);
+
+    // 无论运行结果如何，都恢复终端状态
+    disable_raw_mode()?;
+    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
+    terminal.show_cursor()?;
+
+    result
+}
+
+fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>) -> Result<()> {
     let mut app = App::new();
     app.scan()?;
 
@@ -35,11 +56,11 @@ fn main() -> Result<()> {
             match app.state {
                 AppState::Scanning => {
                     if key.code == KeyCode::Char('q') {
-                        break;
+                        return Ok(());
                     }
                 }
                 AppState::Selecting => match key.code {
-                    KeyCode::Char('q') => break,
+                    KeyCode::Char('q') => return Ok(()),
                     KeyCode::Up | KeyCode::Char('k') => app.move_up(),
                     KeyCode::Down | KeyCode::Char('j') => app.move_down(),
                     KeyCode::Char(' ') => app.toggle_selected(),
@@ -75,7 +96,7 @@ fn main() -> Result<()> {
                 },
                 AppState::Cleaning => {}
                 AppState::Complete => match key.code {
-                    KeyCode::Char('q') => break,
+                    KeyCode::Char('q') => return Ok(()),
                     KeyCode::Char('r') => {
                         app = App::new();
                         app.scan()?;
@@ -85,10 +106,4 @@ fn main() -> Result<()> {
             }
         }
     }
-
-    disable_raw_mode()?;
-    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
-    terminal.show_cursor()?;
-
-    Ok(())
 }

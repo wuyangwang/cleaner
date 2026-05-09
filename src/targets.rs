@@ -34,104 +34,50 @@ pub fn get_trash_directories() -> Vec<(PathBuf, String)> {
     let home = get_home_dir();
 
     if let Some(home) = home {
-        // JavaScript / Node.js
-        dirs.push((home.join(".npm"), "npm 缓存".to_string()));
-        dirs.push((home.join(".pnpm-store"), "pnpm 缓存".to_string()));
-        dirs.push((
-            home.join("AppData").join("Local").join("pnpm-store"),
-            "pnpm 缓存".to_string(),
-        ));
-        dirs.push((home.join(".yarn"), "yarn 缓存".to_string()));
-        dirs.push((home.join(".cache").join("yarn"), "yarn 缓存".to_string()));
-        #[cfg(target_os = "windows")]
+        // --- 极低副作用（日志、临时文件） ---
+        dirs.push((home.join(".npm").join("_logs"), "npm 日志".to_string()));
+        dirs.push((home.join(".cargo").join("registry").join("src"), "Cargo 已解压源码 (可安全清理)".to_string()));
+        
+        #[cfg(target_os = "linux")]
         {
-            if let Ok(local_app_data) = std::env::var("LOCALAPPDATA") {
-                dirs.push((
-                    PathBuf::from(&local_app_data).join("Yarn"),
-                    "yarn 缓存".to_string(),
-                ));
-            }
+            dirs.push((home.join(".cache").join("thumbnails"), "缩略图缓存".to_string()));
+            dirs.push((home.join(".cache").join("google-chrome"), "Chrome 浏览器缓存".to_string()));
         }
-        dirs.push((home.join(".bun"), "bun 缓存".to_string()));
-        dirs.push((home.join(".node_modules"), "node_modules".to_string()));
+        #[cfg(target_os = "macos")]
+        {
+            dirs.push((home.join("Library").join("Caches").join("Google").join("Chrome"), "Chrome 浏览器缓存".to_string()));
+            dirs.push((home.join("Library").join("Logs"), "系统日志".to_string()));
+        }
+
+        // --- 高副作用（删除后需重新下载/编译） ---
+        // JavaScript / Node.js
+        dirs.push((home.join(".npm"), "npm 缓存 (清理后需重新下载)".to_string()));
+        dirs.push((home.join(".pnpm-store"), "pnpm 存储 (慎删：影响所有 pnpm 项目)".to_string()));
+        dirs.push((home.join(".yarn"), "yarn 缓存 (清理后需重新下载)".to_string()));
 
         // Rust / Cargo
         let cargo_home = std::env::var("CARGO_HOME")
             .map(PathBuf::from)
             .unwrap_or_else(|_| home.join(".cargo"));
-        dirs.push((cargo_home.join("registry"), "cargo 注册表".to_string()));
-        dirs.push((cargo_home.join("git"), "cargo git".to_string()));
-        dirs.push((cargo_home.join("target"), "cargo 构建".to_string()));
+        dirs.push((cargo_home.join("target"), "Cargo 全局构建缓存 (清理后需重新编译)".to_string()));
 
         // Go
         let gopath = std::env::var("GOPATH")
             .map(PathBuf::from)
             .unwrap_or_else(|_| home.join("go"));
-        dirs.push((gopath.join("pkg").join("mod"), "go 模块".to_string()));
-        dirs.push((gopath.join("pkg").join("sumdb"), "go sumdb".to_string()));
-        let gomodcache = std::env::var("GOMODCACHE")
-            .map(PathBuf::from)
-            .unwrap_or_else(|_| gopath.join("pkg").join("mod"));
-        dirs.push((gomodcache, "go 模块缓存".to_string()));
+        dirs.push((gopath.join("pkg").join("mod"), "Go 模块 (清理后需重新下载)".to_string()));
         let go_cache = std::env::var("GOCACHE")
             .map(PathBuf::from)
             .unwrap_or_else(|_| home.join(".cache").join("go-build"));
-        dirs.push((go_cache, "go 构建缓存".to_string()));
+        dirs.push((go_cache, "Go 构建缓存 (清理后需重新编译)".to_string()));
 
         // Python
-        dirs.push((home.join(".cache").join("pip"), "pip 缓存".to_string()));
-        #[cfg(target_os = "windows")]
-        {
-            if let Ok(local_app_data) = std::env::var("LOCALAPPDATA") {
-                dirs.push((
-                    PathBuf::from(&local_app_data).join("pip").join("cache"),
-                    "pip 缓存".to_string(),
-                ));
-            }
-        }
-        #[cfg(target_os = "macos")]
-        {
-            dirs.push((
-                home.join("Library").join("Caches").join("pip"),
-                "pip 缓存".to_string(),
-            ));
-        }
-        dirs.push((home.join(".conda").join("pkgs"), "conda 缓存".to_string()));
-        dirs.push((
-            home.join("Anaconda3").join("pkgs"),
-            "conda 缓存".to_string(),
-        ));
-        dirs.push((
-            home.join("miniconda3").join("pkgs"),
-            "conda 缓存".to_string(),
-        ));
-        dirs.push((
-            home.join(".cache").join("pypoetry"),
-            "poetry 缓存".to_string(),
-        ));
-        #[cfg(target_os = "macos")]
-        {
-            dirs.push((
-                home.join("Library").join("Caches").join("pypoetry"),
-                "poetry 缓存".to_string(),
-            ));
-        }
-        dirs.push((home.join(".cache").join("pdm"), "pdm 缓存".to_string()));
-        dirs.push((
-            home.join(".cache").join("virtualenv"),
-            "虚拟环境".to_string(),
-        ));
+        dirs.push((home.join(".cache").join("pip"), "pip 缓存 (清理后需重新下载)".to_string()));
+        dirs.push((home.join(".cache").join("pypoetry"), "Poetry 缓存 (清理后需重新下载)".to_string()));
 
         // Java
-        dirs.push((
-            home.join(".m2").join("repository"),
-            "maven 缓存".to_string(),
-        ));
-        dirs.push((home.join(".m2").join("wrapper"), "maven 包装器".to_string()));
-        dirs.push((
-            home.join(".gradle").join("caches"),
-            "gradle 缓存".to_string(),
-        ));
+        dirs.push((home.join(".m2").join("repository"), "Maven 仓库 (慎删：重新下载极慢)".to_string()));
+        dirs.push((home.join(".gradle").join("caches"), "Gradle 缓存 (清理后需重新下载)".to_string()));
         dirs.push((
             home.join(".gradle").join("wrapper"),
             "gradle 包装器".to_string(),
@@ -202,6 +148,38 @@ pub fn get_trash_directories() -> Vec<(PathBuf, String)> {
             dirs.push((
                 home.join("Library").join("Caches").join("pub"),
                 "pub 缓存".to_string(),
+            ));
+        }
+
+        // Deno
+        dirs.push((home.join(".deno"), "deno 缓存".to_string()));
+        dirs.push((home.join(".cache").join("deno"), "deno 缓存".to_string()));
+
+        // Homebrew
+        #[cfg(target_os = "macos")]
+        {
+            dirs.push((home.join("Library").join("Caches").join("Homebrew"), "Homebrew 缓存".to_string()));
+        }
+        #[cfg(target_os = "linux")]
+        {
+            dirs.push((home.join(".cache").join("Homebrew"), "Homebrew 缓存".to_string()));
+        }
+
+        // CocoaPods (iOS/macOS)
+        #[cfg(target_os = "macos")]
+        {
+            dirs.push((home.join("Library").join("Caches").join("CocoaPods"), "CocoaPods 缓存".to_string()));
+        }
+
+        // Testing & Tools
+        dirs.push((home.join(".cache").join("Cypress"), "Cypress 缓存".to_string()));
+        dirs.push((home.join(".cache").join("electron"), "Electron 缓存".to_string()));
+        dirs.push((home.join(".cache").join("ms-playwright"), "Playwright 浏览器".to_string()));
+        #[cfg(target_os = "macos")]
+        {
+            dirs.push((
+                home.join("Library").join("Caches").join("ms-playwright"),
+                "Playwright 浏览器".to_string(),
             ));
         }
 

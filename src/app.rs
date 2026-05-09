@@ -225,6 +225,23 @@ impl App {
             if let Err(e) = result {
                 self.error_message = Some(format!("跳过 {}: {}", path.display(), e));
             }
+
+            // 如果是文件被删除，尝试删除其空的父目录
+            if !path.is_dir() {
+                let mut current = path.parent();
+                while let Some(parent) = current {
+                    if parent.exists()
+                        && parent.is_dir()
+                        && std::fs::read_dir(parent).map(|mut d| d.next().is_none()).unwrap_or(false)
+                        && !crate::scanner::is_system_critical(parent)
+                    {
+                        let _ = std::fs::remove_dir(parent);
+                        current = parent.parent();
+                    } else {
+                        break;
+                    }
+                }
+            }
         }
 
         self.clean_progress += 1;
@@ -241,11 +258,9 @@ impl App {
         for node in nodes {
             match node {
                 TreeNode::Dir(dir) => {
-                    if Self::is_dir_fully_selected(dir) {
-                        paths.push(dir.path.clone());
-                    } else {
-                        Self::collect_selected_from_nodes(&dir.children, paths);
-                    }
+                    // 不再直接使用 remove_dir_all，而是递归收集所有文件
+                    // 这样可以避免误删被 should_skip_path 跳过的文件
+                    Self::collect_selected_from_nodes(&dir.children, paths);
                 }
                 TreeNode::File(file) => {
                     if file.selected {
@@ -254,13 +269,6 @@ impl App {
                 }
             }
         }
-    }
-
-    fn is_dir_fully_selected(dir: &crate::tree::DirNode) -> bool {
-        dir.children.iter().all(|child| match child {
-            TreeNode::File(f) => f.selected,
-            TreeNode::Dir(d) => Self::is_dir_fully_selected(d),
-        })
     }
 
     pub fn finish_clean(&mut self) -> Result<()> {

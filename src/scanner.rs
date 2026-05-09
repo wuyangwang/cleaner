@@ -66,10 +66,16 @@ pub fn scan_trash_dirs() -> Result<Vec<TrashItem>> {
 fn should_skip_path(path: &Path) -> bool {
     let path_str = path.to_string_lossy();
     let skip_patterns = [
-        "/registry/cache/", // 下载缓存，删除后需重新下载
-        "/registry/index/", // crates.io 索引
-        "/.cargo/target/",  // 编译产物
-        "/node_modules/.cache/",
+        "/registry/cache/", // Cargo: 下载的 .crate 文件
+        "/registry/index/", // Cargo: 索引
+        "/git/db/",         // Cargo: git 数据库
+        "/.cargo/bin/",      // Cargo: 安装的工具
+        "/pkg/mod/cache/",  // Go: 下载的压缩包缓存
+        "/.m2/repository/", // Maven: 本地库文件（极高下载成本）
+        "/.gradle/caches/modules-2/", // Gradle: 下载的依赖
+        "/.pnpm-store/",    // pnpm: 全局内容寻址存储
+        "/AppData/Local/pnpm-store/", // pnpm: Windows 存储
+        "/pip/cache/selfcheck.json", // pip: 检查文件
     ];
     skip_patterns.iter().any(|p| path_str.contains(p))
 }
@@ -84,7 +90,13 @@ fn scan_directory(dir: &Path, category: &str) -> Result<Vec<TrashItem>> {
     for entry in WalkDir::new(dir)
         .max_depth(5)
         .into_iter()
-        .filter_entry(|e| !is_hidden(e))
+        .filter_entry(|e| {
+            // 允许根目录即使是隐藏的（如 .npm），但跳过子目录中的隐藏文件
+            if e.path() == dir {
+                return true;
+            }
+            !is_hidden(e)
+        })
         .flatten()
     {
         let path = entry.path();
