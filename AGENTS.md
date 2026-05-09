@@ -118,6 +118,13 @@ git commit -m "style: 格式化代码"
 - anyhow: 错误处理
 - dirs: 标准目录路径
 
+## 工作流提醒
+
+1. 每完成一个功能步骤后及时 `git add . && git commit`，不要攒多个功能一起提交
+2. 提交信息遵循 Conventional Commits: `feat:`, `fix:`, `refactor:`, `docs:`, `style:`, `chore:`
+3. 先格式化再提交: `cargo fmt && cargo check && git add . && git commit`
+4. 完成 UI/交互改动后，运行一次确认能编译通过
+
 ## 快捷键
 
 | 按键 | 功能 |
@@ -126,6 +133,7 @@ git commit -m "style: 格式化代码"
 | Space | 切换选择 |
 | A | 全选 |
 | N | 取消全选 |
+| S | 切换排序（最大/最小优先） |
 | Enter | 确认删除 |
 | Esc | 取消 |
 | Q | 退出 |

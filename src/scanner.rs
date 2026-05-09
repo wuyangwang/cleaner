@@ -74,7 +74,10 @@ fn get_trash_directories() -> Vec<(PathBuf, String)> {
             dirs.push((PathBuf::from(temp), "临时文件".to_string()));
         }
         if let Ok(local_app_data) = std::env::var("LOCALAPPDATA") {
-            dirs.push((PathBuf::from(&local_app_data).join("Temp"), "临时文件".to_string()));
+            dirs.push((
+                PathBuf::from(&local_app_data).join("Temp"),
+                "临时文件".to_string(),
+            ));
         }
     }
 
@@ -85,13 +88,19 @@ fn get_trash_directories() -> Vec<(PathBuf, String)> {
         // JavaScript / Node.js
         dirs.push((home.join(".npm"), "npm 缓存".to_string()));
         dirs.push((home.join(".pnpm-store"), "pnpm 缓存".to_string()));
-        dirs.push((home.join("AppData").join("Local").join("pnpm-store"), "pnpm 缓存".to_string()));
+        dirs.push((
+            home.join("AppData").join("Local").join("pnpm-store"),
+            "pnpm 缓存".to_string(),
+        ));
         dirs.push((home.join(".yarn"), "yarn 缓存".to_string()));
         dirs.push((home.join(".cache").join("yarn"), "yarn 缓存".to_string()));
         #[cfg(target_os = "windows")]
         {
             if let Ok(local_app_data) = std::env::var("LOCALAPPDATA") {
-                dirs.push((PathBuf::from(&local_app_data).join("Yarn"), "yarn 缓存".to_string()));
+                dirs.push((
+                    PathBuf::from(&local_app_data).join("Yarn"),
+                    "yarn 缓存".to_string(),
+                ));
             }
         }
         dirs.push((home.join(".bun"), "bun 缓存".to_string()));
@@ -125,71 +134,137 @@ fn get_trash_directories() -> Vec<(PathBuf, String)> {
         #[cfg(target_os = "windows")]
         {
             if let Ok(local_app_data) = std::env::var("LOCALAPPDATA") {
-                dirs.push((PathBuf::from(&local_app_data).join("pip").join("cache"), "pip 缓存".to_string()));
+                dirs.push((
+                    PathBuf::from(&local_app_data).join("pip").join("cache"),
+                    "pip 缓存".to_string(),
+                ));
             }
         }
         #[cfg(target_os = "macos")]
         {
-            dirs.push((home.join("Library").join("Caches").join("pip"), "pip 缓存".to_string()));
+            dirs.push((
+                home.join("Library").join("Caches").join("pip"),
+                "pip 缓存".to_string(),
+            ));
         }
         dirs.push((home.join(".conda").join("pkgs"), "conda 缓存".to_string()));
-        dirs.push((home.join("Anaconda3").join("pkgs"), "conda 缓存".to_string()));
-        dirs.push((home.join("miniconda3").join("pkgs"), "conda 缓存".to_string()));
-        dirs.push((home.join(".cache").join("pypoetry"), "poetry 缓存".to_string()));
+        dirs.push((
+            home.join("Anaconda3").join("pkgs"),
+            "conda 缓存".to_string(),
+        ));
+        dirs.push((
+            home.join("miniconda3").join("pkgs"),
+            "conda 缓存".to_string(),
+        ));
+        dirs.push((
+            home.join(".cache").join("pypoetry"),
+            "poetry 缓存".to_string(),
+        ));
         #[cfg(target_os = "macos")]
         {
-            dirs.push((home.join("Library").join("Caches").join("pypoetry"), "poetry 缓存".to_string()));
+            dirs.push((
+                home.join("Library").join("Caches").join("pypoetry"),
+                "poetry 缓存".to_string(),
+            ));
         }
         dirs.push((home.join(".cache").join("pdm"), "pdm 缓存".to_string()));
-        dirs.push((home.join(".cache").join("virtualenv"), "虚拟环境".to_string()));
+        dirs.push((
+            home.join(".cache").join("virtualenv"),
+            "虚拟环境".to_string(),
+        ));
 
         // Java
-        dirs.push((home.join(".m2").join("repository"), "maven 缓存".to_string()));
+        dirs.push((
+            home.join(".m2").join("repository"),
+            "maven 缓存".to_string(),
+        ));
         dirs.push((home.join(".m2").join("wrapper"), "maven 包装器".to_string()));
-        dirs.push((home.join(".gradle").join("caches"), "gradle 缓存".to_string()));
-        dirs.push((home.join(".gradle").join("wrapper"), "gradle 包装器".to_string()));
+        dirs.push((
+            home.join(".gradle").join("caches"),
+            "gradle 缓存".to_string(),
+        ));
+        dirs.push((
+            home.join(".gradle").join("wrapper"),
+            "gradle 包装器".to_string(),
+        ));
         #[cfg(target_os = "macos")]
         {
-            dirs.push((home.join("Library").join("Caches").join("Gradle"), "gradle 缓存".to_string()));
+            dirs.push((
+                home.join("Library").join("Caches").join("Gradle"),
+                "gradle 缓存".to_string(),
+            ));
         }
         dirs.push((home.join(".sbt"), "sbt 缓存".to_string()));
         dirs.push((home.join(".ivy2"), "ivy2 缓存".to_string()));
-        dirs.push((home.join(".cache").join("coursier"), "coursier 缓存".to_string()));
+        dirs.push((
+            home.join(".cache").join("coursier"),
+            "coursier 缓存".to_string(),
+        ));
 
         // .NET / C#
-        dirs.push((home.join(".nuget").join("packages"), "nuget 缓存".to_string()));
+        dirs.push((
+            home.join(".nuget").join("packages"),
+            "nuget 缓存".to_string(),
+        ));
         #[cfg(target_os = "windows")]
         {
             if let Ok(local_app_data) = std::env::var("LOCALAPPDATA") {
-                dirs.push((PathBuf::from(&local_app_data).join("NuGet").join("Cache"), "nuget 缓存".to_string()));
+                dirs.push((
+                    PathBuf::from(&local_app_data).join("NuGet").join("Cache"),
+                    "nuget 缓存".to_string(),
+                ));
             }
         }
-        dirs.push((home.join(".dotnet").join("tools"), "dotnet 工具".to_string()));
+        dirs.push((
+            home.join(".dotnet").join("tools"),
+            "dotnet 工具".to_string(),
+        ));
 
         // Ruby
-        dirs.push((home.join(".bundle").join("cache"), "bundler 缓存".to_string()));
+        dirs.push((
+            home.join(".bundle").join("cache"),
+            "bundler 缓存".to_string(),
+        ));
         dirs.push((home.join(".gem"), "gem 缓存".to_string()));
         dirs.push((home.join(".cache").join("gem"), "gem 缓存".to_string()));
         #[cfg(target_os = "macos")]
         {
-            dirs.push((home.join("Library").join("Caches").join("gem"), "gem 缓存".to_string()));
+            dirs.push((
+                home.join("Library").join("Caches").join("gem"),
+                "gem 缓存".to_string(),
+            ));
         }
 
         // PHP
-        dirs.push((home.join(".composer").join("cache"), "composer 缓存".to_string()));
-        dirs.push((home.join(".cache").join("composer"), "composer 缓存".to_string()));
+        dirs.push((
+            home.join(".composer").join("cache"),
+            "composer 缓存".to_string(),
+        ));
+        dirs.push((
+            home.join(".cache").join("composer"),
+            "composer 缓存".to_string(),
+        ));
 
         // Dart / Flutter
         dirs.push((home.join(".pub-cache"), "pub 缓存".to_string()));
         dirs.push((home.join(".dart"), "dart 缓存".to_string()));
         #[cfg(target_os = "macos")]
         {
-            dirs.push((home.join("Library").join("Caches").join("pub"), "pub 缓存".to_string()));
+            dirs.push((
+                home.join("Library").join("Caches").join("pub"),
+                "pub 缓存".to_string(),
+            ));
         }
 
         // Haskell
-        dirs.push((home.join(".cabal").join("packages"), "cabal 缓存".to_string()));
-        dirs.push((home.join(".stack").join("programs"), "stack 缓存".to_string()));
+        dirs.push((
+            home.join(".cabal").join("packages"),
+            "cabal 缓存".to_string(),
+        ));
+        dirs.push((
+            home.join(".stack").join("programs"),
+            "stack 缓存".to_string(),
+        ));
 
         // Elixir / Erlang
         dirs.push((home.join(".mix"), "mix 缓存".to_string()));
@@ -211,7 +286,13 @@ fn get_trash_directories() -> Vec<(PathBuf, String)> {
         // 回收站
         #[cfg(target_os = "linux")]
         {
-            dirs.push((home.join(".local").join("share").join("Trash").join("files"), "回收站".to_string()));
+            dirs.push((
+                home.join(".local")
+                    .join("share")
+                    .join("Trash")
+                    .join("files"),
+                "回收站".to_string(),
+            ));
         }
         #[cfg(target_os = "macos")]
         {
@@ -248,7 +329,7 @@ fn scan_directory(dir: &Path, category: &str) -> Result<Vec<TrashItem>> {
         .flatten()
     {
         let path = entry.path();
-        
+
         // 跳过系统关键目录
         if is_system_critical(path) {
             continue;
@@ -271,28 +352,43 @@ fn scan_directory(dir: &Path, category: &str) -> Result<Vec<TrashItem>> {
 
 pub fn is_system_critical(path: &Path) -> bool {
     let critical_paths: Vec<&str> = vec![
-        "/", "/bin", "/boot", "/dev", "/etc", "/lib", "/lib64",
-        "/proc", "/root", "/sbin", "/sys", "/usr", "/var",
-        "C:\\", "C:\\Windows", "C:\\Program Files", "C:\\Program Files (x86)",
-        "C:\\Users", "C:\\ProgramData",
+        "/",
+        "/bin",
+        "/boot",
+        "/dev",
+        "/etc",
+        "/lib",
+        "/lib64",
+        "/proc",
+        "/root",
+        "/sbin",
+        "/sys",
+        "/usr",
+        "/var",
+        "C:\\",
+        "C:\\Windows",
+        "C:\\Program Files",
+        "C:\\Program Files (x86)",
+        "C:\\Users",
+        "C:\\ProgramData",
     ];
-    
+
     let path_str = path.to_string_lossy().to_string();
-    
+
     // 检查精确匹配或前缀匹配
     for critical in critical_paths {
         if path_str == critical || path_str.starts_with(&format!("{}/", critical)) {
             return true;
         }
     }
-    
+
     // 检查 home 目录本身（不包括子目录）
     if let Some(home) = get_home_dir()
         && path == home
     {
         return true;
     }
-    
+
     false
 }
 

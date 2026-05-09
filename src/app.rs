@@ -1,6 +1,7 @@
 use crate::disk::{self, DiskInfo};
 use crate::scanner::{self, TrashItem};
 use anyhow::Result;
+use std::collections::HashSet;
 use std::path::PathBuf;
 
 pub enum AppState {
@@ -15,6 +16,7 @@ pub struct App {
     pub items: Vec<TrashItem>,
     pub state: AppState,
     pub selected_index: usize,
+    pub sort_descending: bool,
     pub disk_before: Option<DiskInfo>,
     pub disk_after: Option<DiskInfo>,
     pub cleaned_size: u64,
@@ -29,6 +31,7 @@ impl App {
             items: Vec::new(),
             state: AppState::Scanning,
             selected_index: 0,
+            sort_descending: true,
             disk_before: None,
             disk_after: None,
             cleaned_size: 0,
@@ -36,6 +39,58 @@ impl App {
             clean_total: 0,
             error_message: None,
         }
+    }
+
+    pub fn sort_items_by_category(&mut self) {
+        let mut categories: Vec<String> = Vec::new();
+        let mut grouped: Vec<Vec<TrashItem>> = Vec::new();
+
+        for item in self.items.drain(..) {
+            if let Some(pos) = categories.iter().position(|c| c == &item.category) {
+                grouped[pos].push(item);
+            } else {
+                categories.push(item.category.clone());
+                grouped.push(vec![item]);
+            }
+        }
+
+        if self.sort_descending {
+            for group in &mut grouped {
+                group.sort_by_key(|b| std::cmp::Reverse(b.size));
+            }
+        } else {
+            for group in &mut grouped {
+                group.sort_by_key(|b| b.size);
+            }
+        }
+
+        self.items = grouped.into_iter().flatten().collect();
+    }
+
+    pub fn toggle_sort(&mut self) {
+        self.sort_descending = !self.sort_descending;
+        self.sort_items_by_category();
+        self.selected_index = if self.items.is_empty() { 0 } else { 1 };
+    }
+
+    pub fn sort_label(&self) -> &str {
+        if self.sort_descending {
+            "最大优先"
+        } else {
+            "最小优先"
+        }
+    }
+
+    pub fn build_visual_map(&self) -> Vec<Option<usize>> {
+        let mut map = Vec::new();
+        let mut seen = HashSet::new();
+        for (item_idx, item) in self.items.iter().enumerate() {
+            if seen.insert(item.category.as_str()) {
+                map.push(None);
+            }
+            map.push(Some(item_idx));
+        }
+        map
     }
 
     pub fn scan(&mut self) -> Result<()> {
@@ -47,19 +102,24 @@ impl App {
 
         // 扫描垃圾文件
         self.items = scanner::scan_trash_dirs()?;
+        self.sort_items_by_category();
 
         if self.items.is_empty() {
             self.state = AppState::Complete;
         } else {
             self.state = AppState::Selecting;
+            self.selected_index = 1;
         }
 
         Ok(())
     }
 
     pub fn toggle_selected(&mut self) {
-        if let Some(item) = self.items.get_mut(self.selected_index) {
-            item.selected = !item.selected;
+        let map = self.build_visual_map();
+        if let Some(Some(item_idx)) = map.get(self.selected_index) {
+            if let Some(item) = self.items.get_mut(*item_idx) {
+                item.selected = !item.selected;
+            }
         }
     }
 
@@ -76,14 +136,32 @@ impl App {
     }
 
     pub fn move_up(&mut self) {
-        if self.selected_index > 0 {
-            self.selected_index -= 1;
+        if self.selected_index == 0 {
+            return;
+        }
+        let map = self.build_visual_map();
+        let max_idx = map.len().saturating_sub(1);
+        let mut new_idx = self.selected_index.saturating_sub(1);
+        while new_idx > 0 && map.get(new_idx).map_or(false, |v| v.is_none()) {
+            new_idx = new_idx.saturating_sub(1);
+        }
+        if new_idx <= max_idx && map.get(new_idx).map_or(false, |v| v.is_some()) {
+            self.selected_index = new_idx;
         }
     }
 
     pub fn move_down(&mut self) {
-        if self.selected_index < self.items.len().saturating_sub(1) {
-            self.selected_index += 1;
+        let map = self.build_visual_map();
+        let max_idx = map.len().saturating_sub(1);
+        if self.selected_index >= max_idx {
+            return;
+        }
+        let mut new_idx = self.selected_index + 1;
+        while new_idx < max_idx && map.get(new_idx).map_or(false, |v| v.is_none()) {
+            new_idx += 1;
+        }
+        if map.get(new_idx).map_or(false, |v| v.is_some()) {
+            self.selected_index = new_idx;
         }
     }
 
@@ -102,7 +180,8 @@ impl App {
     }
 
     pub fn clean_next(&mut self) -> Result<bool> {
-        let selected: Vec<usize> = self.items
+        let selected: Vec<usize> = self
+            .items
             .iter()
             .enumerate()
             .filter(|(_, item)| item.selected)
@@ -143,7 +222,8 @@ impl App {
         self.disk_after = Some(disk::get_disk_info(&home)?);
 
         // 移除已删除的项
-        self.items.retain(|item| !item.selected || !item.path.exists());
+        self.items
+            .retain(|item| !item.selected || !item.path.exists());
 
         self.state = AppState::Complete;
         Ok(())

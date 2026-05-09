@@ -2,9 +2,9 @@ use anyhow::Result;
 use crossterm::{
     event::{self, Event, KeyCode, KeyEventKind},
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
-use ratatui::{backend::CrosstermBackend, Terminal};
+use ratatui::{Terminal, backend::CrosstermBackend};
 
 mod app;
 mod disk;
@@ -43,6 +43,7 @@ fn main() -> Result<()> {
                     KeyCode::Char(' ') => app.toggle_selected(),
                     KeyCode::Char('a') | KeyCode::Char('A') => app.select_all(),
                     KeyCode::Char('n') | KeyCode::Char('N') => app.deselect_all(),
+                    KeyCode::Char('s') | KeyCode::Char('S') => app.toggle_sort(),
                     KeyCode::Enter if app.get_selected_count() > 0 => {
                         app.state = AppState::Confirming;
                     }
