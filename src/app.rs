@@ -69,7 +69,6 @@ impl App {
                 let path = item.path.clone();
                 Self::toggle_collapse_in_nodes(&mut self.tree, &path);
                 self.refresh_display();
-                // Find the same item in the new display list
                 if let Some(new_idx) = self.display_items.iter().position(|i| i.path == path) {
                     self.selected_index = new_idx;
                 } else if self.selected_index >= self.display_items.len() {
@@ -99,12 +98,16 @@ impl App {
 
     pub fn toggle_selected(&mut self) {
         if let Some(item) = self.display_items.get(self.selected_index) {
-            if item.is_dir {
+            let path = item.path.clone();
+            let is_dir = item.is_dir;
+            if is_dir {
                 self.toggle_collapse();
             } else {
-                let path = item.path.clone();
                 Self::toggle_file_selection(&mut self.tree, &path);
                 self.refresh_display();
+                if let Some(new_idx) = self.display_items.iter().position(|i| i.path == path) {
+                    self.selected_index = new_idx;
+                }
             }
         }
     }
@@ -149,12 +152,14 @@ impl App {
     pub fn move_up(&mut self) {
         if self.selected_index > 0 {
             self.selected_index -= 1;
+        } else if !self.display_items.is_empty() {
+            self.selected_index = self.display_items.len() - 1;
         }
     }
 
     pub fn move_down(&mut self) {
-        if self.selected_index < self.display_items.len().saturating_sub(1) {
-            self.selected_index += 1;
+        if !self.display_items.is_empty() {
+            self.selected_index = (self.selected_index + 1) % self.display_items.len();
         }
     }
 
