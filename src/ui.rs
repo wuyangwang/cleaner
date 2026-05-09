@@ -26,18 +26,33 @@ pub fn draw(f: &mut Frame, app: &App) {
 }
 
 fn draw_header(f: &mut Frame, app: &App, area: Rect) {
-    let header = match app.state {
-        AppState::Scanning => "Scanning...",
+    let (header, header_style) = match app.state {
+        AppState::Scanning => (
+            "正在扫描...".to_string(),
+            Style::default().fg(Color::Yellow),
+        ),
         AppState::Selecting => {
             let total_size = app.get_selected_size();
             let count = app.get_selected_count();
-            &format!("Selected: {} items ({})", count, format_size(total_size))
+            let st = if count > 0 {
+                Style::default().fg(Color::Green)
+            } else {
+                Style::default().fg(Color::White)
+            };
+            (format!("已选择: {} 项 ({})", count, format_size(total_size)), st)
         }
-        AppState::Confirming => "Press Enter to confirm deletion",
-        AppState::Cleaning => {
-            &format!("Cleaning... {}/{}", app.clean_progress, app.clean_total)
-        }
-        AppState::Complete => "Complete!",
+        AppState::Confirming => (
+            "按回车确认删除".to_string(),
+            Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+        ),
+        AppState::Cleaning => (
+            format!("正在删除... {}/{}", app.clean_progress, app.clean_total),
+            Style::default().fg(Color::Yellow),
+        ),
+        AppState::Complete => (
+            "清理完成!".to_string(),
+            Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
+        ),
     };
 
     let block = Block::default()
@@ -46,45 +61,76 @@ fn draw_header(f: &mut Frame, app: &App, area: Rect) {
 
     let paragraph = Paragraph::new(header)
         .block(block)
-        .style(Style::default().fg(Color::White));
+        .style(header_style);
 
     f.render_widget(paragraph, area);
 }
 
 fn draw_file_list(f: &mut Frame, app: &App, area: Rect) {
+    let list_height = (area.height.saturating_sub(2)) as usize;
+    let total_items = app.items.len();
+
+    // 计算滚动偏移，使当前选中项始终可见
+    let offset = if total_items > list_height {
+        std::cmp::min(
+            app.selected_index.saturating_sub(list_height.saturating_sub(1)),
+            total_items.saturating_sub(list_height),
+        )
+    } else {
+        0
+    };
+
     let items: Vec<ListItem> = app
         .items
         .iter()
         .enumerate()
+        .skip(offset)
+        .take(list_height)
         .map(|(i, item)| {
-            let checkbox = if item.selected { "[x]" } else { "[ ]" };
             let path = item.path.display().to_string();
             let size = item.size_str();
             let category = &item.category;
 
-            let style = if i == app.selected_index {
+            let checkbox_style = if item.selected {
+                Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(Color::DarkGray)
+            };
+            let checkbox = if item.selected { "[✓]" } else { "[ ]" };
+
+            let row_style = if i == app.selected_index {
                 Style::default()
                     .fg(Color::Black)
                     .bg(Color::White)
                     .add_modifier(Modifier::BOLD)
+            } else if item.selected {
+                Style::default().fg(Color::LightGreen)
             } else {
                 Style::default().fg(Color::White)
             };
 
             let line = Line::from(vec![
-                Span::styled(format!("{} ", checkbox), style),
-                Span::styled(format!("{:<15} ", category), style),
-                Span::styled(format!("{:<60} ", path), style),
-                Span::styled(size, style),
+                Span::styled(format!("{} ", checkbox), checkbox_style),
+                Span::styled(format!("{:<15} ", category), row_style),
+                Span::styled(format!("{:<60} ", path), row_style),
+                Span::styled(size, row_style),
             ]);
 
             ListItem::new(line)
         })
         .collect();
 
+    let selected_count = app.get_selected_count();
+    let selected_size = app.get_selected_size();
+    let title = format!(
+        "文件列表 (已选 {} 项, 共 {})",
+        selected_count,
+        format_size(selected_size),
+    );
+
     let block = Block::default()
         .borders(Borders::ALL)
-        .title("Files");
+        .title(title);
 
     let list = List::new(items).block(block);
 
@@ -114,7 +160,7 @@ fn draw_status_bar(f: &mut Frame, app: &App, area: Rect) {
 
     let block = Block::default()
         .borders(Borders::ALL)
-        .title("Disk Space");
+        .title("磁盘空间");
 
     let paragraph = Paragraph::new(status)
         .block(block)
@@ -126,42 +172,42 @@ fn draw_status_bar(f: &mut Frame, app: &App, area: Rect) {
 fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
     let help = match app.state {
         AppState::Scanning => vec![
-            Span::styled("Scanning... Please wait", Style::default().fg(Color::Yellow)),
+            Span::styled("正在扫描... 请稍候", Style::default().fg(Color::Yellow)),
         ],
         AppState::Selecting => vec![
             Span::styled("↑↓", Style::default().fg(Color::Cyan)),
-            Span::raw(" Move  "),
-            Span::styled("Space", Style::default().fg(Color::Cyan)),
-            Span::raw(" Toggle  "),
+            Span::styled(" 移动  ", Style::default().fg(Color::Gray)),
+            Span::styled("空格", Style::default().fg(Color::Cyan)),
+            Span::styled(" 选择/取消  ", Style::default().fg(Color::Gray)),
             Span::styled("A", Style::default().fg(Color::Cyan)),
-            Span::raw(" Select All  "),
+            Span::styled(" 全选  ", Style::default().fg(Color::Gray)),
             Span::styled("N", Style::default().fg(Color::Cyan)),
-            Span::raw(" Deselect All  "),
-            Span::styled("Enter", Style::default().fg(Color::Cyan)),
-            Span::raw(" Confirm  "),
-            Span::styled("Q", Style::default().fg(Color::Cyan)),
-            Span::raw(" Quit"),
+            Span::styled(" 取消全选  ", Style::default().fg(Color::Gray)),
+            Span::styled("回车", Style::default().fg(Color::Green)),
+            Span::styled(" 确认删除  ", Style::default().fg(Color::Gray)),
+            Span::styled("Q", Style::default().fg(Color::Red)),
+            Span::styled(" 退出", Style::default().fg(Color::Gray)),
         ],
         AppState::Confirming => vec![
-            Span::styled("Enter", Style::default().fg(Color::Red)),
-            Span::raw(" Delete  "),
+            Span::styled("回车", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+            Span::styled(" 确认删除  ", Style::default().fg(Color::Red)),
             Span::styled("Esc", Style::default().fg(Color::Cyan)),
-            Span::raw(" Cancel"),
+            Span::styled(" 取消", Style::default().fg(Color::Gray)),
         ],
         AppState::Cleaning => vec![
-            Span::styled("Deleting files...", Style::default().fg(Color::Yellow)),
+            Span::styled("正在删除文件...", Style::default().fg(Color::Yellow)),
         ],
         AppState::Complete => vec![
-            Span::styled("Q", Style::default().fg(Color::Cyan)),
-            Span::raw(" Quit  "),
+            Span::styled("Q", Style::default().fg(Color::Red)),
+            Span::styled(" 退出  ", Style::default().fg(Color::Gray)),
             Span::styled("R", Style::default().fg(Color::Cyan)),
-            Span::raw(" Rescan"),
+            Span::styled(" 重新扫描", Style::default().fg(Color::Gray)),
         ],
     };
 
     let block = Block::default()
         .borders(Borders::ALL)
-        .title("Controls");
+        .title("操作说明");
 
     let paragraph = Paragraph::new(Line::from(help)).block(block);
 
