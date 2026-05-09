@@ -239,7 +239,7 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
                 Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
             ),
             Span::styled(" 删除  ", Style::default().fg(Color::Gray)),
-            Span::styled("A/N", Style::default().fg(Color::Cyan)),
+            Span::styled("A", Style::default().fg(Color::Cyan)),
             Span::styled(" 全选/取消  ", Style::default().fg(Color::Gray)),
             Span::styled("R", Style::default().fg(Color::Cyan)),
             Span::styled(" 重新扫描  ", Style::default().fg(Color::Gray)),

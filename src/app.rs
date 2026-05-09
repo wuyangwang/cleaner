@@ -226,21 +226,26 @@ impl App {
     }
 
     pub fn select_all(&mut self) {
+        let all_selected = self.get_selected_count() == self.get_total_count();
+        let target_state = !all_selected;
+
         for node in &mut self.tree {
-            if let TreeNode::Dir(dir) = node {
-                dir.select_all(true);
+            match node {
+                TreeNode::Dir(dir) => dir.select_all(target_state),
+                TreeNode::File(file) => file.selected = target_state,
             }
         }
         self.refresh_display();
     }
 
-    pub fn deselect_all(&mut self) {
-        for node in &mut self.tree {
-            if let TreeNode::Dir(dir) = node {
-                dir.select_all(false);
-            }
-        }
-        self.refresh_display();
+    pub fn get_total_count(&self) -> usize {
+        self.tree
+            .iter()
+            .map(|n| match n {
+                TreeNode::Dir(d) => d.file_count(),
+                TreeNode::File(_) => 1,
+            })
+            .sum()
     }
 
     pub fn move_up(&mut self) {

@@ -88,7 +88,6 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>) -> Result
                         KeyCode::Down | KeyCode::Char('j') => app.move_down(),
                         KeyCode::Char(' ') => app.toggle_selected(),
                         KeyCode::Char('a') | KeyCode::Char('A') => app.select_all(),
-                        KeyCode::Char('n') | KeyCode::Char('N') => app.deselect_all(),
                         KeyCode::Char('d') | KeyCode::Char('D') if app.get_selected_count() > 0 => {
                             app.state = AppState::Confirming;
                         }
