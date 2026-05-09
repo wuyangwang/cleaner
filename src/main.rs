@@ -106,10 +106,19 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>) -> Result
                             }
                         }
                         KeyCode::Char('G') => {
-                            if !app.display_items.is_empty() {
-                                app.selected_index = app.display_items.len() - 1;
+                            let now = std::time::Instant::now();
+                            if let Some(last) = last_g_press {
+                                if now.duration_since(last).as_millis() < 500 {
+                                    if !app.display_items.is_empty() {
+                                        app.selected_index = app.display_items.len() - 1;
+                                    }
+                                    last_g_press = None;
+                                } else {
+                                    last_g_press = Some(now);
+                                }
+                            } else {
+                                last_g_press = Some(now);
                             }
-                            last_g_press = None;
                         }
                         KeyCode::Enter => {
                             if let Some(item) = app.display_items.get(app.selected_index) {
