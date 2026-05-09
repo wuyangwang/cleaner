@@ -57,7 +57,7 @@ fn draw_header(f: &mut Frame, app: &App, area: Rect) {
             }
         }
         AppState::Confirming => (
-            "按回车或D确认删除，Esc取消".to_string(),
+            "按回车或 D 确认删除".to_string(),
             Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
         ),
         AppState::Cleaning => (
@@ -248,7 +248,7 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
         ],
         AppState::Confirming => vec![
             Span::styled(
-                "回车",
+                "回车/D",
                 Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
             ),
             Span::styled(" 确认删除  ", Style::default().fg(Color::Red)),
