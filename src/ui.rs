@@ -135,11 +135,7 @@ fn draw_file_list(f: &mut Frame, app: &App, area: Rect) {
             } else {
                 let checkbox = if item.selected { "[✓]" } else { "[ ]" };
                 let indent = "  ".repeat(item.depth);
-                let file_name = item
-                    .path
-                    .file_name()
-                    .map(|n| n.to_string_lossy().to_string())
-                    .unwrap_or_else(|| item.path.display().to_string());
+                let file_path = shorten_path(&item.path);
                 let size = format_size(item.size);
 
                 let checkbox_style = if item.selected {
@@ -163,7 +159,7 @@ fn draw_file_list(f: &mut Frame, app: &App, area: Rect) {
 
                 let line = Line::from(vec![
                     Span::styled(format!("{}{} ", indent, checkbox), checkbox_style),
-                    Span::styled(format!("{:<60} ", file_name), row_style),
+                    Span::styled(format!("{:<60} ", file_path), row_style),
                     Span::styled(size, row_style),
                 ]);
                 ListItem::new(line)

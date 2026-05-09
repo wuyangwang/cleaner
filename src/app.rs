@@ -69,7 +69,10 @@ impl App {
                 let path = item.path.clone();
                 Self::toggle_collapse_in_nodes(&mut self.tree, &path);
                 self.refresh_display();
-                if self.selected_index >= self.display_items.len() {
+                // Find the same item in the new display list
+                if let Some(new_idx) = self.display_items.iter().position(|i| i.path == path) {
+                    self.selected_index = new_idx;
+                } else if self.selected_index >= self.display_items.len() {
                     self.selected_index = self.display_items.len().saturating_sub(1);
                 }
             }
