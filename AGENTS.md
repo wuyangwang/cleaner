@@ -65,6 +65,50 @@ make build-all      # 所有平台
 make dist           # 打包到 dist/
 ```
 
+## 代码质量
+
+```bash
+# 格式化
+cargo fmt
+
+# 检查
+cargo check
+
+# Clippy 静态分析
+cargo clippy -- -D warnings
+
+# 运行测试
+cargo test
+```
+
+## Git 提交规范
+
+每完成一个功能步骤后进行提交：
+
+```bash
+# 1. 检查状态
+git status
+
+# 2. 添加变更
+git add .
+
+# 3. 提交（遵循 Conventional Commits）
+git commit -m "feat: 添加新功能"
+git commit -m "fix: 修复问题"
+git commit -m "refactor: 重构代码"
+git commit -m "docs: 更新文档"
+git commit -m "style: 格式化代码"
+```
+
+**提交类型**：
+- `feat`: 新功能
+- `fix`: 修复
+- `docs`: 文档
+- `style`: 格式化
+- `refactor`: 重构
+- `test`: 测试
+- `chore`: 构建/工具
+
 ## 依赖
 
 - ratatui: TUI 框架
