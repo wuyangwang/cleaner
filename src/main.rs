@@ -50,12 +50,20 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>) -> Result
     loop {
         terminal.draw(|f| ui::draw(f, &app))?;
 
-        // 检查异步扫描状态
-        if matches!(app.state, AppState::Scanning) {
-            app.update_scan()?;
+        // 处理自动状态转换
+        match app.state {
+            AppState::Scanning => {
+                app.update_scan()?;
+            }
+            AppState::Cleaning => {
+                if app.clean_next()? {
+                    app.finish_clean()?;
+                }
+            }
+            _ => {}
         }
 
-        if event::poll(std::time::Duration::from_millis(50))? {
+        if event::poll(std::time::Duration::from_millis(10))? {
             if let Event::Key(key) = event::read()?
                 && key.kind == KeyEventKind::Press
             {
@@ -94,10 +102,7 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>) -> Result
                         _ => {}
                     },
                     AppState::Cleaning => {
-                        // 在 Cleaning 状态下，不断调用 clean_next 直到完成
-                        if app.clean_next()? {
-                            app.finish_clean()?;
-                        }
+                        // 清理状态下暂不响应其他按键，或可以加个取消功能
                     }
                     AppState::Complete => match key.code {
                         KeyCode::Char('q') => return Ok(()),
