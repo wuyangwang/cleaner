@@ -198,7 +198,8 @@ impl App {
     pub fn start_clean(&mut self) {
         self.state = AppState::Cleaning;
         self.clean_progress = 0;
-        self.clean_total = self.get_selected_count();
+        let selected_paths: Vec<PathBuf> = self.collect_selected_paths();
+        self.clean_total = selected_paths.len();
     }
 
     pub fn clean_next(&mut self) -> Result<bool> {
@@ -235,7 +236,13 @@ impl App {
     fn collect_selected_from_nodes(nodes: &[TreeNode], paths: &mut Vec<PathBuf>) {
         for node in nodes {
             match node {
-                TreeNode::Dir(dir) => Self::collect_selected_from_nodes(&dir.children, paths),
+                TreeNode::Dir(dir) => {
+                    if Self::is_dir_fully_selected(dir) {
+                        paths.push(dir.path.clone());
+                    } else {
+                        Self::collect_selected_from_nodes(&dir.children, paths);
+                    }
+                }
                 TreeNode::File(file) => {
                     if file.selected {
                         paths.push(file.path.clone());
@@ -243,6 +250,13 @@ impl App {
                 }
             }
         }
+    }
+
+    fn is_dir_fully_selected(dir: &crate::tree::DirNode) -> bool {
+        dir.children.iter().all(|child| match child {
+            TreeNode::File(f) => f.selected,
+            TreeNode::Dir(d) => Self::is_dir_fully_selected(d),
+        })
     }
 
     pub fn finish_clean(&mut self) -> Result<()> {
