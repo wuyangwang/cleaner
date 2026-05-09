@@ -1,5 +1,7 @@
 .PHONY: build build-all clean install test release
 
+.DEFAULT_GOAL := help
+
 # 当前平台构建
 build:
 	cargo build --release
