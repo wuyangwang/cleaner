@@ -46,6 +46,7 @@ fn main() -> Result<()> {
 fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>) -> Result<()> {
     let mut app = App::new();
     app.scan()?;
+    let mut last_g_press: Option<std::time::Instant> = None;
 
     loop {
         terminal.draw(|f| ui::draw(f, &app))?;
@@ -77,6 +78,7 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>) -> Result
                         KeyCode::Char('q') => return Ok(()),
                         KeyCode::Esc => {
                             app.error_message = None;
+                            last_g_press = None;
                         }
                         KeyCode::Char('r') | KeyCode::Char('R') => {
                             app = App::new();
@@ -90,6 +92,25 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>) -> Result
                         KeyCode::Char('d') | KeyCode::Char('D') if app.get_selected_count() > 0 => {
                             app.state = AppState::Confirming;
                         }
+                        KeyCode::Char('g') => {
+                            let now = std::time::Instant::now();
+                            if let Some(last) = last_g_press {
+                                if now.duration_since(last).as_millis() < 500 {
+                                    app.selected_index = 0;
+                                    last_g_press = None;
+                                } else {
+                                    last_g_press = Some(now);
+                                }
+                            } else {
+                                last_g_press = Some(now);
+                            }
+                        }
+                        KeyCode::Char('G') => {
+                            if !app.display_items.is_empty() {
+                                app.selected_index = app.display_items.len() - 1;
+                            }
+                            last_g_press = None;
+                        }
                         KeyCode::Enter => {
                             if let Some(item) = app.display_items.get(app.selected_index) {
                                 if item.is_dir {
@@ -97,7 +118,9 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>) -> Result
                                 }
                             }
                         }
-                        _ => {}
+                        _ => {
+                            last_g_press = None;
+                        }
                     },
                     AppState::Confirming => match key.code {
                         KeyCode::Enter | KeyCode::Char('d') | KeyCode::Char('D') => {
