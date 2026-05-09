@@ -65,7 +65,12 @@ pub fn scan_trash_dirs() -> Result<Vec<TrashItem>> {
 
 fn should_skip_path(path: &Path) -> bool {
     let path_str = path.to_string_lossy();
-    let skip_patterns = ["/registry/src/", "/.cargo/git/", "/node_modules/.cache/"];
+    let skip_patterns = [
+        "/registry/cache/", // 下载缓存，删除后需重新下载
+        "/registry/index/", // crates.io 索引
+        "/.cargo/target/",  // 编译产物
+        "/node_modules/.cache/",
+    ];
     skip_patterns.iter().any(|p| path_str.contains(p))
 }
 
