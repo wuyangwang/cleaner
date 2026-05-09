@@ -66,8 +66,16 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>) -> Result
                     KeyCode::Char(' ') => app.toggle_selected(),
                     KeyCode::Char('a') | KeyCode::Char('A') => app.select_all(),
                     KeyCode::Char('n') | KeyCode::Char('N') => app.deselect_all(),
-                    KeyCode::Enter if app.get_selected_count() > 0 => {
-                        app.state = AppState::Confirming;
+                    KeyCode::Enter => {
+                        if let Some(item) = app.display_items.get(app.selected_index) {
+                            if item.is_dir {
+                                app.toggle_collapse();
+                            } else if app.get_selected_count() > 0 {
+                                app.state = AppState::Confirming;
+                            }
+                        } else if app.get_selected_count() > 0 {
+                            app.state = AppState::Confirming;
+                        }
                     }
                     _ => {}
                 },

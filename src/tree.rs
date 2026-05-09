@@ -201,15 +201,31 @@ pub fn flatten_tree(nodes: &[TreeNode], depth: usize) -> Vec<DisplayItem> {
     for node in nodes {
         match node {
             TreeNode::Dir(dir) => {
+                let selected_count = dir.selected_count();
+                let file_count = dir.file_count();
+                
+                // 确定目录的选择状态：0-未选, 1-半选, 2-全选
+                let selected_status = if selected_count == 0 {
+                    0
+                } else if selected_count == file_count {
+                    2
+                } else {
+                    1
+                };
+
                 items.push(DisplayItem {
                     path: dir.path.clone(),
                     size: dir.total_size(),
                     depth,
                     is_dir: true,
                     collapsed: dir.collapsed,
-                    file_count: dir.file_count(),
-                    selected: false,
+                    file_count,
+                    selected: selected_status > 0, // 兼容旧字段
                 });
+                
+                // 我们在 DisplayItem 里加一个新字段或者借用 selected 逻辑
+                // 为了简单起见，我们稍后在 UI 层通过 selected_count 判断
+                
                 if !dir.collapsed {
                     items.extend(flatten_tree(&dir.children, depth + 1));
                 }

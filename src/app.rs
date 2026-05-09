@@ -101,15 +101,31 @@ impl App {
             let path = item.path.clone();
             let is_dir = item.is_dir;
             if is_dir {
-                self.toggle_collapse();
+                Self::toggle_dir_selection(&mut self.tree, &path);
             } else {
                 Self::toggle_file_selection(&mut self.tree, &path);
-                self.refresh_display();
-                if let Some(new_idx) = self.display_items.iter().position(|i| i.path == path) {
-                    self.selected_index = new_idx;
+            }
+            self.refresh_display();
+            if let Some(new_idx) = self.display_items.iter().position(|i| i.path == path) {
+                self.selected_index = new_idx;
+            }
+        }
+    }
+
+    fn toggle_dir_selection(nodes: &mut Vec<TreeNode>, path: &std::path::Path) -> bool {
+        for node in nodes {
+            if let TreeNode::Dir(dir) = node {
+                if dir.path == path {
+                    let all_selected = dir.selected_count() == dir.file_count();
+                    dir.select_all(!all_selected);
+                    return true;
+                }
+                if Self::toggle_dir_selection(&mut dir.children, path) {
+                    return true;
                 }
             }
         }
+        false
     }
 
     fn toggle_file_selection(nodes: &mut Vec<TreeNode>, path: &std::path::Path) -> bool {
