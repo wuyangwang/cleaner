@@ -61,10 +61,6 @@ pub fn get_trash_directories() -> Vec<(PathBuf, String)> {
         // --- 2. 开发工具临时日志与解压源码 (安全清理) ---
         dirs.push((home.join(".npm").join("_logs"), "npm 日志".to_string()));
         dirs.push((
-            home.join(".cargo").join("registry").join("src"),
-            "Cargo 已解压源码 (可安全清理)".to_string(),
-        ));
-        dirs.push((
             home.join(".cache").join("Cypress"),
             "Cypress 缓存".to_string(),
         ));
@@ -112,6 +108,14 @@ pub fn get_trash_directories() -> Vec<(PathBuf, String)> {
         dirs.push((
             cargo_home.join("registry").join("cache"),
             "Cargo 下载缓存 (清理后需重新下载)".to_string(),
+        ));
+        dirs.push((
+            cargo_home.join("git").join("db"),
+            "Cargo git 仓库 (清理后需重新下载)".to_string(),
+        ));
+        dirs.push((
+            cargo_home.join("git").join("checkouts"),
+            "Cargo git 检出 (清理后需重新下载)".to_string(),
         ));
         dirs.push((
             cargo_home.join("target"),
