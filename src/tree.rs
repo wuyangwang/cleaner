@@ -161,6 +161,7 @@ fn build_tree_from_groups(mut groups: HashMap<PathBuf, Vec<TrashItem>>) -> Vec<T
     }
 
     sort_tree_nodes(&mut roots);
+    merge_single_child_dirs(&mut roots);
     roots
 }
 
@@ -175,6 +176,22 @@ fn sort_tree_nodes(nodes: &mut Vec<TreeNode>) {
     for node in nodes {
         if let TreeNode::Dir(dir) = node {
             sort_tree_nodes(&mut dir.children);
+        }
+    }
+}
+
+fn merge_single_child_dirs(nodes: &mut Vec<TreeNode>) {
+    for node in nodes {
+        if let TreeNode::Dir(dir) = node {
+            while dir.children.len() == 1 {
+                if let TreeNode::Dir(child) = dir.children.remove(0) {
+                    dir.path = dir.path.join(child.path.file_name().unwrap_or_default());
+                    dir.children = child.children;
+                } else {
+                    break;
+                }
+            }
+            merge_single_child_dirs(&mut dir.children);
         }
     }
 }
