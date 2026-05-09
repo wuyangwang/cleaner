@@ -154,8 +154,7 @@ fn draw_file_list(f: &mut Frame, app: &App, area: Rect) {
         })
         .collect();
 
-    let title = format!("文件列表 [{}]", app.sort_label());
-    let block = Block::default().borders(Borders::ALL).title(title);
+    let block = Block::default().borders(Borders::ALL).title("文件列表");
 
     let list = List::new(items).block(block);
 

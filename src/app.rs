@@ -17,7 +17,6 @@ pub struct App {
     pub display_items: Vec<DisplayItem>,
     pub state: AppState,
     pub selected_index: usize,
-    pub sort_descending: bool,
     pub disk_before: Option<DiskInfo>,
     pub disk_after: Option<DiskInfo>,
     pub clean_progress: usize,
@@ -32,7 +31,6 @@ impl App {
             display_items: Vec::new(),
             state: AppState::Scanning,
             selected_index: 0,
-            sort_descending: true,
             disk_before: None,
             disk_after: None,
             clean_progress: 0,
@@ -187,14 +185,6 @@ impl App {
                 }
             })
             .sum()
-    }
-
-    pub fn sort_label(&self) -> &str {
-        if self.sort_descending {
-            "最大优先"
-        } else {
-            "最小优先"
-        }
     }
 
     pub fn start_clean(&mut self) {
