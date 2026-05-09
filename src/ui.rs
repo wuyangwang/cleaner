@@ -15,18 +15,32 @@ pub fn draw(f: &mut Frame, app: &App) {
             Constraint::Length(3),
             Constraint::Min(10),
             Constraint::Length(3),
-            Constraint::Length(3),
         ])
         .split(f.area());
 
     draw_header(f, app, chunks[0]);
     draw_file_list(f, app, chunks[1]);
-    draw_status_bar(f, app, chunks[2]);
-    draw_footer(f, app, chunks[3]);
+    draw_footer(f, app, chunks[2]);
 }
 
 fn draw_header(f: &mut Frame, app: &App, area: Rect) {
-    let (header, header_style) = match app.state {
+    let (disk_before, disk_after) = match (&app.disk_before, &app.disk_after) {
+        (Some(before), Some(after)) => (before.available_str(), after.available_str()),
+        (Some(before), None) => (before.available_str(), "-".to_string()),
+        _ => ("-".to_string(), "-".to_string()),
+    };
+
+    let disk_info = match app.state {
+        AppState::Complete => format!(
+            " | 磁盘: {} → {} (+{})",
+            disk_before,
+            disk_after,
+            app.get_disk_freed_str()
+        ),
+        _ => format!(" | 磁盘: {} 可用", disk_before),
+    };
+
+    let (state_text, state_style) = match app.state {
         AppState::Scanning => (
             "正在扫描...".to_string(),
             Style::default().fg(Color::Yellow),
@@ -61,8 +75,11 @@ fn draw_header(f: &mut Frame, app: &App, area: Rect) {
     };
 
     let block = Block::default().borders(Borders::ALL).title("垃圾清理");
-
-    let paragraph = Paragraph::new(header).block(block).style(header_style);
+    let paragraph = Paragraph::new(Line::from(vec![
+        Span::styled(state_text, state_style),
+        Span::styled(disk_info, Style::default().fg(Color::DarkGray)),
+    ]))
+    .block(block);
 
     f.render_widget(paragraph, area);
 }
@@ -159,36 +176,6 @@ fn draw_file_list(f: &mut Frame, app: &App, area: Rect) {
     let list = List::new(items).block(block);
 
     f.render_widget(list, area);
-}
-
-fn draw_status_bar(f: &mut Frame, app: &App, area: Rect) {
-    let (disk_before, disk_after) = match (&app.disk_before, &app.disk_after) {
-        (Some(before), Some(after)) => (before.available_str(), after.available_str()),
-        (Some(before), None) => (before.available_str(), "-".to_string()),
-        _ => ("-".to_string(), "-".to_string()),
-    };
-
-    let status = match app.state {
-        AppState::Complete => {
-            format!(
-                "Disk: {} free → {} free (+{} freed)",
-                disk_before,
-                disk_after,
-                app.get_disk_freed_str()
-            )
-        }
-        _ => {
-            format!("Disk: {} free", disk_before)
-        }
-    };
-
-    let block = Block::default().borders(Borders::ALL).title("磁盘空间");
-
-    let paragraph = Paragraph::new(status)
-        .block(block)
-        .style(Style::default().fg(Color::Green));
-
-    f.render_widget(paragraph, area);
 }
 
 fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
