@@ -57,7 +57,7 @@ fn draw_header(f: &mut Frame, app: &App, area: Rect) {
             }
         }
         AppState::Confirming => (
-            "按回车确认删除".to_string(),
+            "按回车或D确认删除，Esc取消".to_string(),
             Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
         ),
         AppState::Cleaning => (
