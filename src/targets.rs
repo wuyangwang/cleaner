@@ -96,10 +96,6 @@ pub fn get_trash_directories() -> Vec<(PathBuf, String)> {
         // JavaScript / Node.js
         dirs.push((home.join(".npm"), "npm 缓存 (清理后需重新下载)".to_string()));
         dirs.push((
-            home.join(".pnpm-store"),
-            "pnpm 存储 (慎删：影响所有 pnpm 项目)".to_string(),
-        ));
-        dirs.push((
             home.join(".yarn"),
             "yarn 缓存 (清理后需重新下载)".to_string(),
         ));
