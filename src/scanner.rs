@@ -49,20 +49,6 @@ pub fn format_size(bytes: u64) -> String {
     }
 }
 
-pub fn scan_trash_dirs() -> Result<Vec<TrashItem>> {
-    let mut items = Vec::new();
-    let trash_dirs = targets::get_trash_directories();
-
-    for (dir, category) in trash_dirs {
-        if dir.exists() {
-            items.extend(scan_directory(&dir, &category)?);
-        }
-    }
-
-    items.sort_by_key(|b| std::cmp::Reverse(b.size));
-    Ok(items)
-}
-
 fn should_skip_path(path: &Path) -> bool {
     let path_str = path.to_string_lossy();
     let skip_patterns = [

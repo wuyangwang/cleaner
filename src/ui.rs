@@ -38,7 +38,10 @@ fn draw_header(f: &mut Frame, app: &App, area: Rect) {
         ),
         AppState::Selecting | AppState::Complete => {
             if app.display_items.is_empty() {
-                ("所有项目已清理".to_string(), Style::default().fg(Color::Green))
+                (
+                    "所有项目已清理".to_string(),
+                    Style::default().fg(Color::Green),
+                )
             } else {
                 let total_size = app.get_selected_size();
                 let count = app.get_selected_count();

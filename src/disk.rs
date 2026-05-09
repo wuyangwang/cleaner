@@ -50,7 +50,3 @@ pub fn get_disk_info(path: &Path) -> Result<DiskInfo> {
 
     anyhow::bail!("无法获取磁盘信息")
 }
-
-pub fn calculate_freed(before: &DiskInfo, after: &DiskInfo) -> u64 {
-    after.available.saturating_sub(before.available)
-}

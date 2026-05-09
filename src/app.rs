@@ -356,7 +356,9 @@ impl App {
                 if parent.exists()
                     && parent.is_dir()
                     && !crate::scanner::is_system_critical(&parent)
-                    && std::fs::read_dir(&parent).map(|mut d| d.next().is_none()).unwrap_or(false)
+                    && std::fs::read_dir(&parent)
+                        .map(|mut d| d.next().is_none())
+                        .unwrap_or(false)
                 {
                     if std::fs::remove_dir(&parent).is_ok() {
                         changed = true;
@@ -369,7 +371,6 @@ impl App {
             parents_to_check = next_parents;
         }
     }
-
 
     fn collect_selected_paths(&self) -> Vec<PathBuf> {
         let mut paths = Vec::new();
@@ -424,16 +425,5 @@ impl App {
                 d.path.exists() && !d.children.is_empty()
             }
         });
-    }
-
-    pub fn get_disk_freed(&self) -> u64 {
-        match (&self.disk_before, &self.disk_after) {
-            (Some(before), Some(after)) => disk::calculate_freed(before, after),
-            _ => 0,
-        }
-    }
-
-    pub fn get_disk_freed_str(&self) -> String {
-        scanner::format_size(self.get_disk_freed())
     }
 }
