@@ -128,25 +128,30 @@ fn build_tree_from_groups(mut groups: HashMap<PathBuf, Vec<TrashItem>>) -> Vec<T
         dir_map.entry(parent).or_default().extend(children);
     }
 
-    // Process deepest directories first, building bottom-up
-    let mut sorted_dirs: Vec<PathBuf> = dir_map.keys().cloned().collect();
-    sorted_dirs.sort_by_key(|p| std::cmp::Reverse(p.components().count()));
+    let mut queue: Vec<PathBuf> = dir_map.keys().cloned().collect();
+    queue.sort_by_key(|p| std::cmp::Reverse(p.components().count()));
 
-    for dir_path in &sorted_dirs {
-        let children = dir_map.remove(dir_path).unwrap_or_default();
-        let parent = dir_path.parent();
+    while let Some(dir_path) = queue.pop() {
+        let Some(children) = dir_map.remove(&dir_path) else {
+            continue;
+        };
+        let parent_path = dir_path.parent().map(|p| p.to_path_buf());
 
-        if let Some(parent_path) = parent {
+        if let Some(parent_path) = parent_path {
             if parent_path != dir_path {
                 let dir_node = TreeNode::Dir(DirNode {
-                    path: dir_path.clone(),
+                    path: dir_path,
                     children,
                     collapsed: true,
                 });
+                let is_new = !dir_map.contains_key(&parent_path);
                 dir_map
-                    .entry(parent_path.to_path_buf())
+                    .entry(parent_path.clone())
                     .or_default()
                     .push(dir_node);
+                if is_new {
+                    queue.push(parent_path);
+                }
             } else {
                 roots.extend(children);
             }
