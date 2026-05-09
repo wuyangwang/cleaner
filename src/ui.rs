@@ -248,7 +248,7 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
         ],
         AppState::Confirming => vec![
             Span::styled(
-                "回车/D",
+                "回车",
                 Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
             ),
             Span::styled(" 确认删除  ", Style::default().fg(Color::Red)),
