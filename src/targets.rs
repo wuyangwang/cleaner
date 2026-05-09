@@ -106,6 +106,14 @@ pub fn get_trash_directories() -> Vec<(PathBuf, String)> {
             .map(PathBuf::from)
             .unwrap_or_else(|_| home.join(".cargo"));
         dirs.push((
+            cargo_home.join("registry").join("src"),
+            "Cargo 已解压源码 (可安全清理)".to_string(),
+        ));
+        dirs.push((
+            cargo_home.join("registry").join("cache"),
+            "Cargo 下载缓存 (清理后需重新下载)".to_string(),
+        ));
+        dirs.push((
             cargo_home.join("target"),
             "Cargo 全局构建缓存 (清理后需重新编译)".to_string(),
         ));
