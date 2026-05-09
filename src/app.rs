@@ -295,47 +295,72 @@ impl App {
             return Ok(true);
         }
 
-        let path = &selected_paths[self.clean_progress];
-        if crate::scanner::is_system_critical(path) {
-            self.error_message = Some(format!("拒绝删除系统路径: {}", path.display()));
-            self.clean_progress += 1;
-            return Ok(self.clean_progress >= selected_paths.len());
-        }
+        // 批量处理：每次处理 50 个文件以提高效率，同时保持 UI 刷新
+        let batch_size = 50;
+        let end = std::cmp::min(self.clean_progress + batch_size, selected_paths.len());
 
-        if path.exists() {
-            let result = if path.is_dir() {
-                std::fs::remove_dir_all(path)
-            } else {
-                std::fs::remove_file(path)
-            };
-
-            if let Err(e) = result {
-                self.error_message = Some(format!("跳过 {}: {}", path.display(), e));
+        for i in self.clean_progress..end {
+            let path = &selected_paths[i];
+            if crate::scanner::is_system_critical(path) {
+                self.error_message = Some(format!("拒绝删除系统路径: {}", path.display()));
+                continue;
             }
 
-            // 如果是文件被删除，尝试删除其空的父目录
-            if !path.is_dir() {
-                let mut current = path.parent();
-                while let Some(parent) = current {
-                    if parent.exists()
-                        && parent.is_dir()
-                        && std::fs::read_dir(parent)
-                            .map(|mut d| d.next().is_none())
-                            .unwrap_or(false)
-                        && !crate::scanner::is_system_critical(parent)
-                    {
-                        let _ = std::fs::remove_dir(parent);
-                        current = parent.parent();
-                    } else {
-                        break;
-                    }
+            if path.exists() {
+                let result = if path.is_dir() {
+                    std::fs::remove_dir_all(path)
+                } else {
+                    std::fs::remove_file(path)
+                };
+
+                if let Err(e) = result {
+                    self.error_message = Some(format!("跳过 {}: {}", path.display(), e));
                 }
             }
         }
 
-        self.clean_progress += 1;
+        self.clean_progress = end;
+
+        // 如果全部清理完成，尝试一次性清理空目录
+        if self.clean_progress >= selected_paths.len() {
+            self.cleanup_empty_parents(&selected_paths);
+        }
+
         Ok(self.clean_progress >= selected_paths.len())
     }
+
+    fn cleanup_empty_parents(&self, deleted_paths: &[PathBuf]) {
+        use std::collections::HashSet;
+        let mut parents_to_check = HashSet::new();
+        for path in deleted_paths {
+            if let Some(parent) = path.parent() {
+                parents_to_check.insert(parent.to_path_buf());
+            }
+        }
+
+        // 递归尝试清理空目录，直到没有目录被删除
+        let mut changed = true;
+        while changed {
+            changed = false;
+            let mut next_parents = HashSet::new();
+            for parent in parents_to_check {
+                if parent.exists()
+                    && parent.is_dir()
+                    && !crate::scanner::is_system_critical(&parent)
+                    && std::fs::read_dir(&parent).map(|mut d| d.next().is_none()).unwrap_or(false)
+                {
+                    if std::fs::remove_dir(&parent).is_ok() {
+                        changed = true;
+                        if let Some(p) = parent.parent() {
+                            next_parents.insert(p.to_path_buf());
+                        }
+                    }
+                }
+            }
+            parents_to_check = next_parents;
+        }
+    }
+
 
     fn collect_selected_paths(&self) -> Vec<PathBuf> {
         let mut paths = Vec::new();

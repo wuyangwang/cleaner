@@ -87,27 +87,18 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>) -> Result
                     AppState::Confirming => match key.code {
                         KeyCode::Enter => {
                             app.start_clean();
-                            terminal.draw(|f| ui::draw(f, &app))?;
-
-                            loop {
-                                let done = app.clean_next()?;
-                                terminal.draw(|f| ui::draw(f, &app))?;
-
-                                if done {
-                                    break;
-                                }
-
-                                std::thread::sleep(std::time::Duration::from_millis(50));
-                            }
-
-                            app.finish_clean()?;
                         }
                         KeyCode::Esc => {
                             app.state = AppState::Selecting;
                         }
                         _ => {}
                     },
-                    AppState::Cleaning => {}
+                    AppState::Cleaning => {
+                        // 在 Cleaning 状态下，不断调用 clean_next 直到完成
+                        if app.clean_next()? {
+                            app.finish_clean()?;
+                        }
+                    }
                     AppState::Complete => match key.code {
                         KeyCode::Char('q') => return Ok(()),
                         KeyCode::Char('r') => {
