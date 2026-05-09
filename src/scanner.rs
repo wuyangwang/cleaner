@@ -110,25 +110,8 @@ fn scan_directory(dir: &Path, category: &str) -> Result<Vec<TrashItem>> {
 
 pub fn is_system_critical(path: &Path) -> bool {
     let critical_paths: Vec<&str> = vec![
-        "/",
-        "/bin",
-        "/boot",
-        "/dev",
-        "/etc",
-        "/lib",
-        "/lib64",
-        "/proc",
-        "/root",
-        "/sbin",
-        "/sys",
-        "/usr",
-        "/var",
-        "C:\\",
-        "C:\\Windows",
-        "C:\\Program Files",
-        "C:\\Program Files (x86)",
-        "C:\\Users",
-        "C:\\ProgramData",
+        "/", "/bin", "/boot", "/dev", "/etc", "/lib", "/lib64", "/proc", "/root", "/sbin", "/sys",
+        "/usr", "/var",
     ];
 
     let path_str = path.to_string_lossy().to_string();
@@ -136,6 +119,35 @@ pub fn is_system_critical(path: &Path) -> bool {
     for critical in critical_paths {
         if path_str == critical || path_str.starts_with(&format!("{}/", critical)) {
             return true;
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let windows_critical = vec![
+            "Windows",
+            "Program Files",
+            "Program Files (x86)",
+            "ProgramData",
+        ];
+
+        if let Some(components) = path.components().next() {
+            let root = components.as_os_str().to_string_lossy();
+            if root.len() == 2 && root.ends_with(':') {
+                let root_with_sep = format!("{}\\", root);
+                if path_str == root_with_sep || path_str == root {
+                    return true;
+                }
+
+                for critical in &windows_critical {
+                    let critical_path = format!("{}\\{}", root, critical);
+                    if path_str == critical_path
+                        || path_str.starts_with(&format!("{}\\", critical_path))
+                    {
+                        return true;
+                    }
+                }
+            }
         }
     }
 

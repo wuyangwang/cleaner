@@ -20,6 +20,15 @@ pub fn get_trash_directories() -> Vec<(PathBuf, String)> {
                 "临时文件".to_string(),
             ));
         }
+
+        // 扫描其他盘的临时目录
+        for drive in &["D", "E", "F", "G", "H"] {
+            let temp_path = format!("{}:\\Temp", drive);
+            let path = PathBuf::from(&temp_path);
+            if path.exists() {
+                dirs.push((path, "临时文件".to_string()));
+            }
+        }
     }
 
     let home = get_home_dir();
