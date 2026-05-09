@@ -31,6 +31,7 @@ pub struct App {
     pub error_message: Option<String>,
     pub scan_rx: Option<Receiver<ScanEvent>>,
     pub current_scanning: String,
+    pub selected_paths_cache: Vec<PathBuf>,
 }
 
 impl App {
@@ -47,6 +48,7 @@ impl App {
             error_message: None,
             scan_rx: None,
             current_scanning: String::new(),
+            selected_paths_cache: Vec::new(),
         }
     }
 
@@ -285,22 +287,24 @@ impl App {
     pub fn start_clean(&mut self) {
         self.state = AppState::Cleaning;
         self.clean_progress = 0;
-        let selected_paths: Vec<PathBuf> = self.collect_selected_paths();
-        self.clean_total = selected_paths.len();
+        self.selected_paths_cache = self.collect_selected_paths();
+        self.clean_total = self.selected_paths_cache.len();
     }
 
     pub fn clean_next(&mut self) -> Result<bool> {
-        let selected_paths: Vec<PathBuf> = self.collect_selected_paths();
-        if self.clean_progress >= selected_paths.len() {
+        if self.clean_progress >= self.selected_paths_cache.len() {
             return Ok(true);
         }
 
         // 批量处理：每次处理 50 个文件以提高效率，同时保持 UI 刷新
         let batch_size = 50;
-        let end = std::cmp::min(self.clean_progress + batch_size, selected_paths.len());
+        let end = std::cmp::min(
+            self.clean_progress + batch_size,
+            self.selected_paths_cache.len(),
+        );
 
         for i in self.clean_progress..end {
-            let path = &selected_paths[i];
+            let path = &self.selected_paths_cache[i];
             if crate::scanner::is_system_critical(path) {
                 self.error_message = Some(format!("拒绝删除系统路径: {}", path.display()));
                 continue;
@@ -322,11 +326,11 @@ impl App {
         self.clean_progress = end;
 
         // 如果全部清理完成，尝试一次性清理空目录
-        if self.clean_progress >= selected_paths.len() {
-            self.cleanup_empty_parents(&selected_paths);
+        if self.clean_progress >= self.selected_paths_cache.len() {
+            self.cleanup_empty_parents(&self.selected_paths_cache);
         }
 
-        Ok(self.clean_progress >= selected_paths.len())
+        Ok(self.clean_progress >= self.selected_paths_cache.len())
     }
 
     fn cleanup_empty_parents(&self, deleted_paths: &[PathBuf]) {
