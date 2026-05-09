@@ -54,6 +54,11 @@ impl App {
 
     pub fn refresh_display(&mut self) {
         self.display_items = crate::tree::flatten_tree(&self.tree, 0);
+        if self.display_items.is_empty() {
+            self.selected_index = 0;
+        } else if self.selected_index >= self.display_items.len() {
+            self.selected_index = self.display_items.len() - 1;
+        }
     }
 
     pub fn scan(&mut self) -> Result<()> {
@@ -391,25 +396,34 @@ impl App {
 
     pub fn finish_clean(&mut self) -> Result<()> {
         let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
-        self.disk_after = Some(disk::get_disk_info(&home)?);
+        if let Ok(now) = disk::get_disk_info(&home) {
+            self.disk_before = Some(now);
+        }
+        self.disk_after = None;
 
         Self::remove_deleted_files(&mut self.tree);
         self.refresh_display();
 
-        self.state = AppState::Complete;
+        self.state = AppState::Selecting;
         Ok(())
     }
 
     fn remove_deleted_files(nodes: &mut Vec<TreeNode>) {
-        nodes.retain(|node| match node {
-            TreeNode::File(f) => !f.selected || f.path.exists(),
-            TreeNode::Dir(_) => true,
-        });
-        for node in nodes {
+        // 先递归处理子节点
+        for node in nodes.iter_mut() {
             if let TreeNode::Dir(dir) = node {
                 Self::remove_deleted_files(&mut dir.children);
             }
         }
+
+        // 然后过滤掉已不存在的文件和目录，以及变为空的目录
+        nodes.retain(|node| match node {
+            TreeNode::File(f) => !f.selected || f.path.exists(),
+            TreeNode::Dir(d) => {
+                // 如果目录本身已不存在，或者目录在树中已无子节点，则移除
+                d.path.exists() && !d.children.is_empty()
+            }
+        });
     }
 
     pub fn get_disk_freed(&self) -> u64 {

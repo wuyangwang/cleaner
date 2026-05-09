@@ -24,39 +24,34 @@ pub fn draw(f: &mut Frame, app: &App) {
 }
 
 fn draw_header(f: &mut Frame, app: &App, area: Rect) {
-    let (disk_before, disk_after) = match (&app.disk_before, &app.disk_after) {
-        (Some(before), Some(after)) => (before.available_str(), after.available_str()),
-        (Some(before), None) => (before.available_str(), "-".to_string()),
-        _ => ("-".to_string(), "-".to_string()),
+    let disk_before = match &app.disk_before {
+        Some(before) => before.available_str(),
+        _ => "-".to_string(),
     };
 
-    let disk_info = match app.state {
-        AppState::Complete => format!(
-            " | 磁盘: {} → {} (+{})",
-            disk_before,
-            disk_after,
-            app.get_disk_freed_str()
-        ),
-        _ => format!(" | 磁盘: {} 可用", disk_before),
-    };
+    let disk_info = format!(" | 磁盘: {} 可用", disk_before);
 
     let (state_text, state_style) = match app.state {
         AppState::Scanning => (
             app.current_scanning.clone(),
             Style::default().fg(Color::Yellow),
         ),
-        AppState::Selecting => {
-            let total_size = app.get_selected_size();
-            let count = app.get_selected_count();
-            let st = if count > 0 {
-                Style::default().fg(Color::Green)
+        AppState::Selecting | AppState::Complete => {
+            if app.display_items.is_empty() {
+                ("所有项目已清理".to_string(), Style::default().fg(Color::Green))
             } else {
-                Style::default().fg(Color::White)
-            };
-            (
-                format!("已选择: {} 项 ({})", count, format_size(total_size)),
-                st,
-            )
+                let total_size = app.get_selected_size();
+                let count = app.get_selected_count();
+                let st = if count > 0 {
+                    Style::default().fg(Color::Green)
+                } else {
+                    Style::default().fg(Color::White)
+                };
+                (
+                    format!("已选择: {} 项 ({})", count, format_size(total_size)),
+                    st,
+                )
+            }
         }
         AppState::Confirming => (
             "按回车确认删除".to_string(),
@@ -65,12 +60,6 @@ fn draw_header(f: &mut Frame, app: &App, area: Rect) {
         AppState::Cleaning => (
             format!("正在删除... {}/{}", app.clean_progress, app.clean_total),
             Style::default().fg(Color::Yellow),
-        ),
-        AppState::Complete => (
-            "清理完成!".to_string(),
-            Style::default()
-                .fg(Color::Green)
-                .add_modifier(Modifier::BOLD),
         ),
     };
 
@@ -220,7 +209,7 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
             "正在扫描... 请稍候",
             Style::default().fg(Color::Yellow),
         )],
-        AppState::Selecting => vec![
+        AppState::Selecting | AppState::Complete => vec![
             Span::styled("↑↓", Style::default().fg(Color::Cyan)),
             Span::styled(" 移动  ", Style::default().fg(Color::Gray)),
             Span::styled("空格", Style::default().fg(Color::Cyan)),
@@ -234,6 +223,8 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
             Span::styled(" 删除  ", Style::default().fg(Color::Gray)),
             Span::styled("A/N", Style::default().fg(Color::Cyan)),
             Span::styled(" 全选/取消  ", Style::default().fg(Color::Gray)),
+            Span::styled("R", Style::default().fg(Color::Cyan)),
+            Span::styled(" 重新扫描  ", Style::default().fg(Color::Gray)),
             Span::styled("Q", Style::default().fg(Color::Red)),
             Span::styled(" 退出", Style::default().fg(Color::Gray)),
         ],
@@ -250,12 +241,6 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
             "正在删除文件...",
             Style::default().fg(Color::Yellow),
         )],
-        AppState::Complete => vec![
-            Span::styled("Q", Style::default().fg(Color::Red)),
-            Span::styled(" 退出  ", Style::default().fg(Color::Gray)),
-            Span::styled("R", Style::default().fg(Color::Cyan)),
-            Span::styled(" 重新扫描", Style::default().fg(Color::Gray)),
-        ],
     };
 
     let block = Block::default().borders(Borders::ALL).title("操作说明");

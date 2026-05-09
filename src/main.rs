@@ -73,8 +73,12 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>) -> Result
                             return Ok(());
                         }
                     }
-                    AppState::Selecting => match key.code {
+                    AppState::Selecting | AppState::Complete => match key.code {
                         KeyCode::Char('q') => return Ok(()),
+                        KeyCode::Char('r') | KeyCode::Char('R') => {
+                            app = App::new();
+                            app.scan()?;
+                        }
                         KeyCode::Up | KeyCode::Char('k') => app.move_up(),
                         KeyCode::Down | KeyCode::Char('j') => app.move_down(),
                         KeyCode::Char(' ') => app.toggle_selected(),
@@ -102,16 +106,8 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>) -> Result
                         _ => {}
                     },
                     AppState::Cleaning => {
-                        // 清理状态下暂不响应其他按键，或可以加个取消功能
+                        // 清理状态下暂不响应其他按键
                     }
-                    AppState::Complete => match key.code {
-                        KeyCode::Char('q') => return Ok(()),
-                        KeyCode::Char('r') => {
-                            app = App::new();
-                            app.scan()?;
-                        }
-                        _ => {}
-                    },
                 }
             }
         }
