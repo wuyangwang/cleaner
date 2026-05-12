@@ -1,4 +1,5 @@
 use crate::disk::{self, DiskInfo};
+use crate::error::CleanError;
 use crate::scanner::{self, TrashItem};
 use crate::tree::{DisplayItem, TreeNode};
 use anyhow::Result;
@@ -86,10 +87,11 @@ impl App {
                     match scanner::scan_directory(&dir, &category) {
                         Ok(items) => all_items.extend(items),
                         Err(e) => {
+                            let clean_error = CleanError::ScanFailed(e.to_string());
                             let _ = tx.send(ScanEvent::Error(format!(
                                 "扫描 {} 失败: {}",
                                 dir.display(),
-                                e
+                                clean_error
                             )));
                         }
                     }
@@ -142,16 +144,16 @@ impl App {
     }
 
     pub fn toggle_collapse(&mut self) {
-        if let Some(item) = self.display_items.get(self.selected_index) {
-            if item.is_dir {
-                let path = item.path.clone();
-                Self::toggle_collapse_in_nodes(&mut self.tree, &path);
-                self.refresh_display();
-                if let Some(new_idx) = self.display_items.iter().position(|i| i.path == path) {
-                    self.selected_index = new_idx;
-                } else if self.selected_index >= self.display_items.len() {
-                    self.selected_index = self.display_items.len().saturating_sub(1);
-                }
+        if let Some(item) = self.display_items.get(self.selected_index)
+            && item.is_dir
+        {
+            let path = item.path.clone();
+            Self::toggle_collapse_in_nodes(&mut self.tree, &path);
+            self.refresh_display();
+            if let Some(new_idx) = self.display_items.iter().position(|i| i.path == path) {
+                self.selected_index = new_idx;
+            } else if self.selected_index >= self.display_items.len() {
+                self.selected_index = self.display_items.len().saturating_sub(1);
             }
         }
     }
@@ -183,6 +185,7 @@ impl App {
             } else {
                 Self::toggle_file_selection(&mut self.tree, &path);
             }
+            crate::tree::recompute_aggregates(&mut self.tree);
             self.refresh_display();
             if let Some(new_idx) = self.display_items.iter().position(|i| i.path == path) {
                 self.selected_index = new_idx;
@@ -194,7 +197,7 @@ impl App {
         for node in nodes {
             if let TreeNode::Dir(dir) = node {
                 if dir.path == path {
-                    let all_selected = dir.selected_count() == dir.file_count();
+                    let all_selected = dir.selected_count == dir.file_count;
                     dir.select_all(!all_selected);
                     return true;
                 }
@@ -235,6 +238,7 @@ impl App {
                 TreeNode::File(file) => file.selected = target_state,
             }
         }
+        crate::tree::recompute_aggregates(&mut self.tree);
         self.refresh_display();
     }
 
@@ -242,7 +246,7 @@ impl App {
         self.tree
             .iter()
             .map(|n| match n {
-                TreeNode::Dir(d) => d.file_count(),
+                TreeNode::Dir(d) => d.file_count,
                 TreeNode::File(_) => 1,
             })
             .sum()
@@ -266,7 +270,7 @@ impl App {
         self.tree
             .iter()
             .map(|n| match n {
-                TreeNode::Dir(d) => d.selected_count(),
+                TreeNode::Dir(d) => d.selected_count,
                 TreeNode::File(f) => {
                     if f.selected {
                         1
@@ -282,7 +286,7 @@ impl App {
         self.tree
             .iter()
             .map(|n| match n {
-                TreeNode::Dir(d) => d.selected_size(),
+                TreeNode::Dir(d) => d.selected_size,
                 TreeNode::File(f) => {
                     if f.selected {
                         f.size
@@ -316,7 +320,8 @@ impl App {
         for i in self.clean_progress..end {
             let path = &self.selected_paths_cache[i];
             if crate::scanner::is_system_critical(path) {
-                self.error_message = Some(format!("拒绝删除系统路径: {}", path.display()));
+                self.error_message =
+                    Some(CleanError::SystemPathForbidden(path.clone()).to_string());
                 continue;
             }
 
@@ -328,7 +333,8 @@ impl App {
                 };
 
                 if let Err(e) = result {
-                    self.error_message = Some(format!("跳过 {}: {}", path.display(), e));
+                    self.error_message =
+                        Some(CleanError::DeleteFailed(path.clone(), e.to_string()).to_string());
                 }
             }
         }
@@ -364,12 +370,11 @@ impl App {
                     && std::fs::read_dir(&parent)
                         .map(|mut d| d.next().is_none())
                         .unwrap_or(false)
+                    && std::fs::remove_dir(&parent).is_ok()
                 {
-                    if std::fs::remove_dir(&parent).is_ok() {
-                        changed = true;
-                        if let Some(p) = parent.parent() {
-                            next_parents.insert(p.to_path_buf());
-                        }
+                    changed = true;
+                    if let Some(p) = parent.parent() {
+                        next_parents.insert(p.to_path_buf());
                     }
                 }
             }
@@ -408,6 +413,7 @@ impl App {
         self.disk_after = None;
 
         Self::remove_deleted_files(&mut self.tree);
+        crate::tree::recompute_aggregates(&mut self.tree);
         self.refresh_display();
 
         self.state = AppState::Selecting;

@@ -16,6 +16,9 @@ pub fn get_disk_info(path: &Path) -> Result<DiskInfo> {
     let disks = Disks::new_with_refreshed_list();
     let path_str = path.to_string_lossy();
 
+    #[cfg(not(target_os = "windows"))]
+    let mut best_match: Option<(usize, u64)> = None;
+
     for disk in disks.list() {
         let mount_point = disk.mount_point().to_string_lossy();
 
@@ -32,11 +35,19 @@ pub fn get_disk_info(path: &Path) -> Result<DiskInfo> {
         #[cfg(not(target_os = "windows"))]
         {
             if path_str.starts_with(&*mount_point) {
-                return Ok(DiskInfo {
-                    available: disk.available_space(),
-                });
+                let len = mount_point.len();
+                let available = disk.available_space();
+                match best_match {
+                    Some((best_len, _)) if best_len >= len => {}
+                    _ => best_match = Some((len, available)),
+                }
             }
         }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    if let Some((_, available)) = best_match {
+        return Ok(DiskInfo { available });
     }
 
     // 回退到根目录

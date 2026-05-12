@@ -5,6 +5,32 @@ use walkdir::WalkDir;
 use crate::targets;
 
 #[derive(Debug, Clone)]
+pub struct ScanConfig {
+    pub max_depth: usize,
+    pub skip_patterns: Vec<String>,
+}
+
+impl Default for ScanConfig {
+    fn default() -> Self {
+        Self {
+            max_depth: 5,
+            skip_patterns: vec![
+                "/registry/cache/".to_string(),
+                "/registry/index/".to_string(),
+                "/git/db/".to_string(),
+                "/.cargo/bin/".to_string(),
+                "/pkg/mod/cache/".to_string(),
+                "/.m2/repository/".to_string(),
+                "/.gradle/caches/modules-2/".to_string(),
+                "/.pnpm-store/".to_string(),
+                "/AppData/Local/pnpm-store/".to_string(),
+                "/pip/cache/selfcheck.json".to_string(),
+            ],
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct TrashItem {
     pub path: PathBuf,
     pub size: u64,
@@ -49,24 +75,20 @@ pub fn format_size(bytes: u64) -> String {
     }
 }
 
-fn should_skip_path(path: &Path) -> bool {
+fn should_skip_path(path: &Path, skip_patterns: &[String]) -> bool {
     let path_str = path.to_string_lossy();
-    let skip_patterns = [
-        "/registry/cache/",           // Cargo: 下载的 .crate 文件
-        "/registry/index/",           // Cargo: 索引
-        "/git/db/",                   // Cargo: git 数据库
-        "/.cargo/bin/",               // Cargo: 安装的工具
-        "/pkg/mod/cache/",            // Go: 下载的压缩包缓存
-        "/.m2/repository/",           // Maven: 本地库文件（极高下载成本）
-        "/.gradle/caches/modules-2/", // Gradle: 下载的依赖
-        "/.pnpm-store/",              // pnpm: 全局内容寻址存储
-        "/AppData/Local/pnpm-store/", // pnpm: Windows 存储
-        "/pip/cache/selfcheck.json",  // pip: 检查文件
-    ];
     skip_patterns.iter().any(|p| path_str.contains(p))
 }
 
 pub fn scan_directory(dir: &Path, category: &str) -> Result<Vec<TrashItem>> {
+    scan_directory_with_config(dir, category, &ScanConfig::default())
+}
+
+pub fn scan_directory_with_config(
+    dir: &Path,
+    category: &str,
+    config: &ScanConfig,
+) -> Result<Vec<TrashItem>> {
     let mut items = Vec::new();
 
     if is_system_critical(dir) {
@@ -74,7 +96,7 @@ pub fn scan_directory(dir: &Path, category: &str) -> Result<Vec<TrashItem>> {
     }
 
     for entry in WalkDir::new(dir)
-        .max_depth(5)
+        .max_depth(config.max_depth)
         .into_iter()
         .filter_entry(|e| {
             // 允许根目录即使是隐藏的（如 .npm），但跳过子目录中的隐藏文件
@@ -87,7 +109,7 @@ pub fn scan_directory(dir: &Path, category: &str) -> Result<Vec<TrashItem>> {
     {
         let path = entry.path();
 
-        if is_system_critical(path) || should_skip_path(path) {
+        if is_system_critical(path) || should_skip_path(path, &config.skip_patterns) {
             continue;
         }
 
@@ -164,4 +186,28 @@ fn is_hidden(entry: &walkdir::DirEntry) -> bool {
         .to_str()
         .map(|s| s.starts_with('.'))
         .unwrap_or(false)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{ScanConfig, is_system_critical};
+    use std::path::Path;
+
+    #[test]
+    fn system_critical_root_is_blocked() {
+        assert!(is_system_critical(Path::new("/")));
+        assert!(is_system_critical(Path::new("/usr/bin")));
+    }
+
+    #[test]
+    fn normal_home_subdir_is_not_system_critical() {
+        assert!(!is_system_critical(Path::new("/tmp/cleaner-test-file")));
+    }
+
+    #[test]
+    fn default_scan_config_has_expected_limits() {
+        let config = ScanConfig::default();
+        assert_eq!(config.max_depth, 5);
+        assert!(config.skip_patterns.iter().any(|p| p == "/.m2/repository/"));
+    }
 }
