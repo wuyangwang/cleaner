@@ -19,10 +19,10 @@ src/
 ## 核心模块
 
 - **app.rs**: 状态管理（Scanning → Selecting → Confirming → Cleaning → Complete）
-- **scanner.rs**: 文件扫描 + 安全检查
-- **tree.rs**: 树结构（目录/文件），支持折叠展开
-- **targets.rs**: 清理目标目录配置
-- **disk.rs**: 磁盘空间检测
+- **scanner.rs**: 文件扫描 + 安全检查（`ScanConfig` 支持扫描深度/跳过规则配置）
+- **tree.rs**: 树结构（目录/文件），支持折叠展开；目录聚合统计使用缓存字段
+- **targets.rs**: 清理目标目录配置（路径去重，避免重复扫描）
+- **disk.rs**: 磁盘空间检测（非 Windows 使用最长挂载点匹配）
 - **error.rs**: 错误类型枚举
 
 ## 代码规范
@@ -56,7 +56,8 @@ cargo test             # 运行测试
 2. 提交信息遵循 Conventional Commits: `feat:`, `fix:`, `refactor:`, `docs:`, `style:`, `chore:`
 3. 先格式化再提交: `cargo fmt && cargo check && git add . && git commit`
 4. 完成 UI/交互改动后，运行一次确认能编译通过
-5. 发布版本: 手动运行 `make release`（创建 tag 并推送，触发 GitHub Actions 构建）
+5. 提交前建议完整质量门禁: `cargo fmt && cargo check && cargo test && cargo clippy -- -D warnings`
+6. 发布版本: 手动运行 `make release`（创建 tag 并推送，触发 GitHub Actions 构建）
 
 ## 快捷键
 
