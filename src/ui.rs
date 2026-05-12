@@ -199,7 +199,13 @@ fn draw_file_list(f: &mut Frame, app: &App, area: Rect) {
         })
         .collect();
 
-    let block = Block::default().borders(Borders::ALL).title("文件列表");
+    let current = if total_visual > 0 {
+        app.selected_index + 1
+    } else {
+        0
+    };
+    let title = format!("文件列表 [{}/{}]", current, total_visual);
+    let block = Block::default().borders(Borders::ALL).title(title);
 
     let list = List::new(items).block(block);
 
